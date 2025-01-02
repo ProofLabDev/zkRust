@@ -66,7 +66,16 @@ pub fn prepare_host(
     Ok(())
 }
 
-/// Generates SP1 proof and ELF
+/// Build the SP1 program
+pub fn build_sp1_program(script_dir: &PathBuf) -> io::Result<ExitStatus> {
+    Command::new("cargo")
+        .arg("build")
+        .arg("--release")
+        .current_dir(script_dir)
+        .status()
+}
+
+/// Generates SP1 proof and ELF using pre-built artifacts
 pub fn generate_sp1_proof(script_dir: &PathBuf, current_dir: &PathBuf) -> io::Result<ExitStatus> {
     Command::new("cargo")
         .arg("run")

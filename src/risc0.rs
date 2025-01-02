@@ -87,13 +87,22 @@ pub fn prepare_host(
     Ok(())
 }
 
-/// Generates RISC0 proof and image ID
-pub fn generate_risc0_proof(guest_path: &PathBuf, current_dir: &PathBuf) -> io::Result<ExitStatus> {
+/// Build the RISC0 program
+pub fn build_risc0_program(workspace_dir: &PathBuf) -> io::Result<ExitStatus> {
+    Command::new("cargo")
+        .arg("build")
+        .arg("--release")
+        .current_dir(workspace_dir)
+        .status()
+}
+
+/// Generates RISC0 proof and image ID using pre-built artifacts
+pub fn generate_risc0_proof(workspace_dir: &PathBuf, current_dir: &PathBuf) -> io::Result<ExitStatus> {
     Command::new("cargo")
         .arg("run")
         .arg("--release")
         .arg("--")
         .arg(current_dir)
-        .current_dir(guest_path)
+        .current_dir(workspace_dir)
         .status()
 }

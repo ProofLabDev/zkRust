@@ -7,7 +7,10 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
 use tokio::io;
-use zkRust::{risc0, sp1, submit_proof_to_aligned, utils, ProofArgs};
+use zkRust::{risc0, sp1, submit_proof_to_aligned, utils, ProofArgs, telemetry::TelemetryCollector};
+use std::fs;
+use std::time::Instant;
+use std::sync::{Arc, Mutex};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -33,6 +36,10 @@ async fn main() -> io::Result<()> {
     match &cli.command {
         Commands::ProveSp1(args) => {
             info!("Proving with SP1, program in: {}", args.guest_path);
+            
+            let telemetry = TelemetryCollector::new("SP1", args.precompiles, args.enable_telemetry);
+            let workspace_start = Instant::now();
+
             // Perform sanitation checks on directory
             let proof_data_dir = PathBuf::from(&args.proof_data_directory_path);
             if !proof_data_dir.exists() {
@@ -61,6 +68,9 @@ async fn main() -> io::Result<()> {
                     &home_dir.join(sp1::SP1_BASE_GUEST_CARGO_TOML),
                 )?;
 
+                telemetry.record_workspace_setup(workspace_start.elapsed());
+
+                let compilation_start = Instant::now();
                 let Ok(imports) = utils::get_imports(&home_dir.join(sp1::SP1_GUEST_MAIN)) else {
                     error!("Failed to extract imports");
                     return Ok(());
@@ -78,13 +88,7 @@ async fn main() -> io::Result<()> {
                     error!("Failed to extract function bodies");
                     return Ok(());
                 };
-                /*
-                    Adds header to the guest & replace I/O imports
-                    risc0:
 
-                        #![no_main]
-                        sp1_zkvm::entrypoint!(main);
-                */
                 utils::prepare_guest(
                     &imports,
                     &function_bodies[0],
@@ -103,14 +107,35 @@ async fn main() -> io::Result<()> {
 
                 if args.precompiles {
                     let mut toml_file = OpenOptions::new()
-                        .append(true) // Open the file in append mode
+                        .append(true)
                         .open(home_dir.join(sp1::SP1_GUEST_CARGO_TOML))?;
 
                     writeln!(toml_file, "{}", sp1::SP1_ACCELERATION_IMPORT)?;
                 }
 
+                telemetry.record_compilation(compilation_start.elapsed());
+
+                let proof_gen_start = Instant::now();
                 let script_dir = home_dir.join(sp1::SP1_SCRIPT_DIR);
+                
+                // Build the program first
+                let build_result = sp1::build_sp1_program(&script_dir)?;
+                if !build_result.success() {
+                    error!("SP1 program build failed");
+                    return Ok(());
+                }
+                info!("SP1 program built successfully");
+
+                // Start resource sampling in a separate thread
+                let tx = telemetry.start_resource_monitoring();
+
                 let result = sp1::generate_sp1_proof(&script_dir, &current_dir)?;
+                
+                // Stop resource sampling
+                let _ = tx.send(());
+                
+                telemetry.record_proof_generation(proof_gen_start.elapsed());
+
                 if result.success() {
                     info!("SP1 proof and ELF generated");
 
@@ -137,6 +162,17 @@ async fn main() -> io::Result<()> {
                         info!("SP1 proof submitted and verified on Aligned");
                     }
 
+                    // Save telemetry data if enabled
+                    if let Some(telemetry_data) = telemetry.finalize() {
+                        if args.enable_telemetry {
+                            fs::create_dir_all(&args.telemetry_output_path)?;
+                            let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
+                            let telemetry_file = format!("{}/sp1_telemetry_{}.json", args.telemetry_output_path, timestamp);
+                            fs::write(&telemetry_file, serde_json::to_string_pretty(&telemetry_data)?)?;
+                            info!("Telemetry data saved to: {}", telemetry_file);
+                        }
+                    }
+
                     std::fs::copy(
                         home_dir.join(sp1::SP1_BASE_HOST_FILE),
                         home_dir.join(sp1::SP1_HOST_MAIN),
@@ -147,12 +183,23 @@ async fn main() -> io::Result<()> {
                     })?;
                     return Ok(());
                 }
-                error!("SP1 proof generation failed with exit code: {}", result.code().unwrap());
+                error!("SP1 proof generation failed with exit code: {}", result.code().unwrap_or(-1));
                 if let Some(code) = result.code() {
                     match code {
                         101 => error!("Proof verification failed - the generated proof could not be verified"),
                         102 => error!("ELF file generation failed"),
                         _ => error!("Unknown error occurred during proof generation, code: {}", code),
+                    }
+                }
+
+                // Save telemetry data even on failure
+                if let Some(telemetry_data) = telemetry.finalize() {
+                    if args.enable_telemetry {
+                        fs::create_dir_all(&args.telemetry_output_path)?;
+                        let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
+                        let telemetry_file = format!("{}/sp1_telemetry_failed_{}.json", args.telemetry_output_path, timestamp);
+                        fs::write(&telemetry_file, serde_json::to_string_pretty(&telemetry_data)?)?;
+                        info!("Telemetry data saved to: {}", telemetry_file);
                     }
                 }
 
@@ -170,6 +217,9 @@ async fn main() -> io::Result<()> {
 
         Commands::ProveRisc0(args) => {
             info!("Proving with Risc0, program in: {}", args.guest_path);
+
+            let telemetry = TelemetryCollector::new("RISC0", args.precompiles, args.enable_telemetry);
+            let workspace_start = Instant::now();
 
             // Perform sanitation checks on directory
             if utils::validate_directory_structure(&args.guest_path) {
@@ -199,6 +249,9 @@ async fn main() -> io::Result<()> {
                     &home_dir.join(risc0::RISC0_BASE_GUEST_CARGO_TOML),
                 )?;
 
+                telemetry.record_workspace_setup(workspace_start.elapsed());
+
+                let compilation_start = Instant::now();
                 let Ok(imports) = utils::get_imports(&home_dir.join(risc0::RISC0_GUEST_MAIN))
                 else {
                     error!("Failed to extract imports");
@@ -217,13 +270,6 @@ async fn main() -> io::Result<()> {
                     return Ok(());
                 };
 
-                /*
-                    Adds header to the guest & replace I/O imports
-                    risc0:
-
-                        #![no_main]
-                        risc0_zkvm::guest::entry!(main);
-                */
                 utils::prepare_guest(
                     &imports,
                     &function_bodies[0],
@@ -248,8 +294,30 @@ async fn main() -> io::Result<()> {
                     writeln!(toml_file, "{}", risc0::RISC0_ACCELERATION_IMPORT)?;
                 }
 
+                telemetry.record_compilation(compilation_start.elapsed());
+
+                let proof_gen_start = Instant::now();
                 let workspace_dir = home_dir.join(risc0::RISC0_WORKSPACE_DIR);
-                if risc0::generate_risc0_proof(&workspace_dir, &current_dir)?.success() {
+
+                // Build the program first
+                let build_result = risc0::build_risc0_program(&workspace_dir)?;
+                if !build_result.success() {
+                    error!("RISC0 program build failed");
+                    return Ok(());
+                }
+                info!("RISC0 program built successfully");
+
+                // Start resource sampling in a separate thread
+                let tx = telemetry.start_resource_monitoring();
+
+                let result = risc0::generate_risc0_proof(&workspace_dir, &current_dir)?;
+
+                // Stop resource sampling
+                let _ = tx.send(());
+
+                telemetry.record_proof_generation(proof_gen_start.elapsed());
+
+                if result.success() {
                     info!("Risc0 proof and Image ID generated");
 
                     utils::replace(
@@ -276,6 +344,17 @@ async fn main() -> io::Result<()> {
                         info!("Risc0 proof submitted and verified on Aligned");
                     }
 
+                    // Save telemetry data if enabled
+                    if let Some(telemetry_data) = telemetry.finalize() {
+                        if args.enable_telemetry {
+                            fs::create_dir_all(&args.telemetry_output_path)?;
+                            let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
+                            let telemetry_file = format!("{}/risc0_telemetry_{}.json", args.telemetry_output_path, timestamp);
+                            fs::write(&telemetry_file, serde_json::to_string_pretty(&telemetry_data)?)?;
+                            info!("Telemetry data saved to: {}", telemetry_file);
+                        }
+                    }
+
                     // Clear Host file
                     std::fs::copy(
                         home_dir.join(risc0::RISC0_BASE_HOST_FILE),
@@ -288,6 +367,17 @@ async fn main() -> io::Result<()> {
                     return Ok(());
                 }
                 info!("Risc0 proof generation failed");
+
+                // Save telemetry data even on failure
+                if let Some(telemetry_data) = telemetry.finalize() {
+                    if args.enable_telemetry {
+                        fs::create_dir_all(&args.telemetry_output_path)?;
+                        let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
+                        let telemetry_file = format!("{}/risc0_telemetry_failed_{}.json", args.telemetry_output_path, timestamp);
+                        fs::write(&telemetry_file, serde_json::to_string_pretty(&telemetry_data)?)?;
+                        info!("Telemetry data saved to: {}", telemetry_file);
+                    }
+                }
 
                 // Clear Host file
                 std::fs::copy(

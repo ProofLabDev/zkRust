@@ -22,6 +22,7 @@ use ethers::signers::LocalWallet;
 pub mod risc0;
 pub mod sp1;
 pub mod utils;
+pub mod telemetry;
 
 // Make proof_data path optional
 // Make keystore unneeded
@@ -77,6 +78,18 @@ pub struct ProofArgs {
         default_value("wss://batcher.alignedlayer.com")
     )]
     pub batcher_url: String,
+    #[clap(
+        name = "Enable collection of performance telemetry",
+        long = "enable-telemetry",
+        default_value = "false"
+    )]
+    pub enable_telemetry: bool,
+    #[clap(
+        name = "Path to save telemetry data",
+        long = "telemetry-output",
+        default_value = "./telemetry"
+    )]
+    pub telemetry_output_path: String,
 }
 
 const MIN_FEE_PER_PROOF: u128 = 13_000 * 100_000_000; // gas_price = 0.1 Gwei = 0.0000000001 ether (low gas price)

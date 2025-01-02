@@ -1,18 +1,18 @@
-SHELL := $(shell echo $$SHELL)
+# SHELL := $(shell echo $$SHELL)
 
-# Find the profile directory based on the shell
-ifeq ($(findstring bash,$(SHELL)),bash)
-    PROFILE := ~/.bashrc
-else ifeq ($(findstring zsh,$(SHELL)),zsh)
-    PROFILE := ~/.zshenv
-else ifeq ($(findstring fish,$(SHELL)),fish)
-    PROFILE := ~/.config/fish/config.fish
-else ifeq ($(findstring sh,$(SHELL)),sh)
-    PROFILE := ~/.profile
-else
-    echo "zkrust: could not detect shell, manually add ${ZKRUST_BIN_DIR} to your PATH."
-	exit 1
-endif
+# # Find the profile directory based on the shell
+# ifeq ($(findstring bash,$(SHELL)),bash)
+#     PROFILE := ~/.bashrc
+# else ifeq ($(findstring zsh,$(SHELL)),zsh)
+#     PROFILE := ~/.zshenv
+# else ifeq ($(findstring fish,$(SHELL)),fish)
+#     PROFILE := ~/.config/fish/config.fish
+# else ifeq ($(findstring sh,$(SHELL)),sh)
+#     PROFILE := ~/.profile
+# else
+#     echo "zkrust: could not detect shell, manually add ${ZKRUST_BIN_DIR} to your PATH."
+# 	exit 1
+# endif
 
 install: install_zkRust
 
@@ -83,3 +83,15 @@ prove_sp1_tendermint:
 
 prove_sp1_zkquiz:
 	@RUST_LOG=info cargo run --release -- prove-sp1 examples/zkquiz
+
+# Docker commands
+docker-shell:
+	docker run -it \
+		-v zkrust-cargo-registry:/root/.cargo/registry \
+		-v zkrust-cargo-git:/root/.cargo/git \
+		-v "$(PWD):/zkrust" \
+		-w /zkrust \
+		zkrust bash
+
+docker-build:
+	docker build --platform=linux/amd64 -t zkrust .
