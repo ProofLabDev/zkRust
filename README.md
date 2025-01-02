@@ -20,6 +20,33 @@ for local development install the repository dependencies.
 make install
 ```
 
+## Docker
+
+zkRust can also be run in a Docker container. The provided Dockerfile sets up a complete environment with all necessary dependencies.
+
+### Building the Image
+
+```sh
+docker build -t zkrust .
+```
+
+### Running the Container
+
+Basic usage:
+```sh
+docker run -it zkrust bash
+```
+
+For faster builds and better performance, mount the Rust cache directories:
+```sh
+docker run -it \
+  -v "$HOME/.cargo/registry:/root/.cargo/registry" \
+  -v "$HOME/.cargo/git:/root/.cargo/git" \
+  zkrust bash
+```
+
+This will significantly speed up builds by reusing your local Rust package cache.
+
 ## Quickstart
 
 To get started you can create a workspace for your project in zkRust by running:

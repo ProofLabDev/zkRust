@@ -33,6 +33,6 @@ fn main() {
     let proof_data = bincode::serialize(&proof).expect("Failed to serialize proof");
     std::fs::write(&current_dir.join("proof_data/sp1/sp1.proof"), proof_data).expect("Failed to save SP1 Proof file");
     std::fs::write(&current_dir.join("proof_data/sp1/sp1.elf"), METHOD_ELF).expect("Failed to create SP1 elf file");
-    std::fs::write(&current_dir.join("proof_data/sp1/sp1_fibonacci.pub"), proof.public_values)
+    std::fs::write(&current_dir.join("proof_data/sp1/sp1.pub"), proof.public_values)
         .expect("Failed to save SP1 public input");
 }

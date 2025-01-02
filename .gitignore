@@ -17,3 +17,7 @@ aligned_verification_data/*
 
 .DS_Store
 **/.DS_Store
+
+# Docker
+.docker/
+*.dockerfile.cache

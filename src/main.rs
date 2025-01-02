@@ -110,7 +110,8 @@ async fn main() -> io::Result<()> {
                 }
 
                 let script_dir = home_dir.join(sp1::SP1_SCRIPT_DIR);
-                if sp1::generate_sp1_proof(&script_dir, &current_dir)?.success() {
+                let result = sp1::generate_sp1_proof(&script_dir, &current_dir)?;
+                if result.success() {
                     info!("SP1 proof and ELF generated");
 
                     utils::replace(
@@ -146,7 +147,14 @@ async fn main() -> io::Result<()> {
                     })?;
                     return Ok(());
                 }
-                info!("SP1 proof generation failed");
+                error!("SP1 proof generation failed with exit code: {}", result.code().unwrap());
+                if let Some(code) = result.code() {
+                    match code {
+                        101 => error!("Proof verification failed - the generated proof could not be verified"),
+                        102 => error!("ELF file generation failed"),
+                        _ => error!("Unknown error occurred during proof generation, code: {}", code),
+                    }
+                }
 
                 // Clear host
                 std::fs::copy(
