@@ -9,9 +9,6 @@ use tracing::{error, info};
 pub const METHOD_ELF: &[u8] = include_bytes!("../../program/elf/riscv32im-succinct-zkvm-elf");
 
 fn main() {
-    // Initialize tracing
-    tracing_subscriber::fmt().with_env_filter("info").init();
-
     let args: Vec<String> = std::env::args().collect();
     let current_dir = std::path::PathBuf::from(args[1].clone());
     // Setup the logger.
@@ -21,8 +18,8 @@ fn main() {
     let mut core_timer = MetricsCollector::new();
     let mut compress_timer = MetricsCollector::new();
 
-    // Setup the inputs.
-    let stdin = SP1Stdin::new();
+    // Setup the inputs and set as mutable to allow for template code to access it if needed
+    let mut stdin = SP1Stdin::new();
 
     // INPUT //
 
@@ -38,7 +35,8 @@ fn main() {
 
     // Generate uncompressed proof
     core_timer.start_timing();
-    let proof = client.prove(&pk, stdin.clone()).run().unwrap();
+    // Set as mutable to allow for template code to access it if needed
+    let mut proof = client.prove(&pk, stdin.clone()).run().unwrap();
     metrics.core_prove_duration = core_timer.elapsed().unwrap();
 
     // Get uncompressed proof size
@@ -71,6 +69,8 @@ fn main() {
         .verify(&compressed, &vk)
         .expect("Failed to verify compressed proof");
     metrics.compress_verify_duration = compress_timer.elapsed().unwrap();
+
+    // OUTPUT //
 
     // Save proof artifacts
     std::fs::create_dir_all(current_dir.join("proof_data/sp1"))

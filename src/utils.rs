@@ -246,20 +246,53 @@ pub fn prepare_workspace(
 ) -> io::Result<()> {
     let workspace_guest_src_dir = workspace_guest_dir.join("src");
     let workspace_host_src_dir = workspace_host_dir.join("src");
-    if let Err(e) = fs::remove_dir_all(&workspace_guest_src_dir) {
-        if e.kind() != ErrorKind::NotFound {
-            return Err(e);
+
+    // Create directories if they don't exist
+    fs::create_dir_all(&workspace_guest_src_dir)?;
+    fs::create_dir_all(&workspace_host_src_dir)?;
+
+    // Clean up old files except metrics.rs
+    for entry in fs::read_dir(&workspace_guest_src_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.file_name().unwrap_or_default() != "metrics.rs" {
+            if path.is_file() {
+                fs::remove_file(&path)?;
+            } else if path.is_dir() {
+                fs::remove_dir_all(&path)?;
+            }
         }
     }
-    if let Err(e) = fs::remove_dir_all(&workspace_host_src_dir) {
-        if e.kind() != ErrorKind::NotFound {
-            return Err(e);
+    for entry in fs::read_dir(&workspace_host_src_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.file_name().unwrap_or_default() != "metrics.rs" {
+            if path.is_file() {
+                fs::remove_file(&path)?;
+            } else if path.is_dir() {
+                fs::remove_dir_all(&path)?;
+            }
         }
     }
-    // Copy src/ directory
+
+    // Copy src/ directory contents, skipping metrics.rs if it exists in destination
     let src_dir_path = guest_path.join("src");
-    copy_dir_all(&src_dir_path, workspace_guest_src_dir)?;
-    copy_dir_all(&src_dir_path, workspace_host_src_dir)?;
+    for entry in fs::read_dir(&src_dir_path)? {
+        let entry = entry?;
+        let path = entry.path();
+        let file_name = path.file_name().unwrap_or_default();
+        if file_name != "metrics.rs" {
+            let guest_dest = workspace_guest_src_dir.join(file_name);
+            let host_dest = workspace_host_src_dir.join(file_name);
+            if path.is_file() {
+                fs::copy(&path, &guest_dest)?;
+                fs::copy(&path, &host_dest)?;
+            } else if path.is_dir() {
+                copy_dir_all(&path, &guest_dest)?;
+                copy_dir_all(&path, &host_dest)?;
+            }
+        }
+    }
 
     // Copy lib/ if present
     let lib_dir_path = guest_path.join("lib");

@@ -56,21 +56,29 @@ echo "zkRust built and installed successfully in $ZKRUST_BIN_PATH"
 echo "Detected your preferred shell is $PREF_SHELL and added to PATH."
 echo "Installing zkVM toolchains"
 
-echo "Installing Risc0 Toolchain..."
-# Install risc0 toolchain
-curl -L https://risczero.com/install | bash
-export PATH="$PATH:$HOME/.risc0/bin"
-rzup install
+# Check for RISC0 toolchain
+echo "Checking for RISC0 toolchain..."
+if ! command -v rzup &> /dev/null; then
+    echo "Installing RISC0 toolchain..."
+    curl -L https://risczero.com/install | bash
+    export PATH="$PATH:$HOME/.risc0/bin"
+    rzup install
+else
+    echo "RISC0 toolchain already installed"
+fi
 cargo risczero --version
-echo "Risc0 Toolchain Installed"
 
-echo "Installing SP1 Toolchain..."
-# Install sp1 toolchain
-curl -L https://sp1.succinct.xyz | bash
-export PATH="$PATH:$HOME/.sp1/bin"
-sp1up
+# Check for SP1 toolchain
+echo "Checking for SP1 toolchain..."
+if ! command -v sp1up &> /dev/null; then
+    echo "Installing SP1 toolchain..."
+    curl -L https://sp1.succinct.xyz | bash
+    export PATH="$PATH:$HOME/.sp1/bin"
+    sp1up
+else
+    echo "SP1 toolchain already installed"
+fi
 cargo prove --version
-echo "Sp1 Toolchain Installed"
 
 # Set up workspaces directory
 echo "Setting up workspaces..."

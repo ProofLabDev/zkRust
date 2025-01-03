@@ -1,6 +1,8 @@
 use zk_rust_io;
 
 fn main() {
+    println!("cycle-tracker-report-start: fibonacci");
+
     let n: u32 = zk_rust_io::read();
     zk_rust_io::commit(&n);
 
@@ -15,6 +17,8 @@ fn main() {
 
     zk_rust_io::commit(&a);
     zk_rust_io::commit(&b);
+
+    println!("cycle-tracker-report-end: fibonacci");
 }
 
 fn input() {

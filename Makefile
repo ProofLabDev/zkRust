@@ -36,7 +36,7 @@ __EXAMPLES__:
 
 # RISC0
 prove_risc0_fibonacci:
-	@RUST_LOG=info cargo run --release -- prove-risc0 examples/fibonacci
+	@RUST_LOG=info cargo run --release -- prove-risc0 examples/fibonacci --enable-telemetry
 
 prove_risc0_rsa:
 	@RUST_LOG=info cargo run --release -- prove-risc0 examples/rsa
@@ -89,7 +89,7 @@ docker-shell:
 	docker run -it \
 		-v zkrust-cargo-registry:/root/.cargo/registry \
 		-v zkrust-cargo-git:/root/.cargo/git \
-		-v "$(PWD):/zkrust" \
+		-v "$(PWD)/src:/zkrust/src" \
 		-w /zkrust \
 		zkrust bash
 

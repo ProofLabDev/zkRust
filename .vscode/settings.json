@@ -24,7 +24,6 @@
         "workspaces/sp1/script/Cargo.toml",
         "workspaces/sp1/program/Cargo.toml",
         "workspaces/risc0/host/Cargo.toml",
-        "workspaces/risc0/methods/Cargo.toml",
     ],
     "rust-analyzer.showUnlinkedFileNotification": false
 }
