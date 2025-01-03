@@ -2,32 +2,87 @@
 // The ELF is used for proving and the ID is used for verification.
 use methods::{METHOD_ELF, METHOD_ID};
 use risc0_zkvm::{default_prover, ExecutorEnv};
+use std::time::Instant;
+mod metrics;
+use metrics::{MetricsCollector, Risc0Metrics};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let current_dir = std::path::PathBuf::from(args[1].clone());
 
-    // INPUT //
+    let mut metrics = Risc0Metrics::default();
+    let mut core_timer = MetricsCollector::new();
+    let mut compress_timer = MetricsCollector::new();
 
+    // INPUT //
     let env = ExecutorEnv::builder().build().unwrap();
 
-    // Obtain the default prover.
+    // First run executor to get cycle count and segments
+    let mut exec = risc0_zkvm::Executor::from_elf(env.clone(), METHOD_ELF).unwrap();
+    let session = exec.run().unwrap();
+    metrics.cycles = session.segments.iter().map(|s| s.cycles()).sum();
+    metrics.num_segments = session.segments.len();
+
+    // Obtain the default prover
     let prover = default_prover();
 
-    // Produce a receipt by proving the specified ELF binary.
-    let receipt = prover.prove(env, METHOD_ELF).unwrap().receipt;
+    // Generate core proof
+    core_timer.start_timing();
+    let receipt = prover.prove_session(&session).unwrap();
+    metrics.core_prove_duration = core_timer.elapsed().unwrap();
 
+    // Get core proof size
+    let composite_receipt = receipt.inner.composite().unwrap();
+    metrics.core_proof_size = composite_receipt
+        .segments
+        .iter()
+        .map(|s| s.seal.len() * 4)
+        .sum();
+
+    // Verify core proof
+    core_timer.start_timing();
     receipt.verify(METHOD_ID).unwrap();
+    metrics.core_verify_duration = core_timer.elapsed().unwrap();
 
-    // OUTPUT //
+    // Generate compressed/recursive proof
+    compress_timer.start_timing();
+    let compressed = prover
+        .compress(&risc0_zkvm::ProverOpts::default(), &receipt)
+        .unwrap();
+    metrics.compress_prove_duration = compress_timer.elapsed().unwrap();
 
+    // Get compressed proof size
+    let succinct_receipt = compressed.inner.succinct().unwrap();
+    metrics.recursive_proof_size = succinct_receipt.seal.len() * 4;
+
+    // Verify compressed proof
+    compress_timer.start_timing();
+    compressed.verify(METHOD_ID).unwrap();
+    metrics.compress_verify_duration = compress_timer.elapsed().unwrap();
+
+    // Save proof artifacts
+    std::fs::create_dir_all(current_dir.join("proof_data/risc0"))
+        .expect("Failed to create proof_data/risc0");
     let serialized = bincode::serialize(&receipt).unwrap();
+    std::fs::write(
+        &current_dir.join("proof_data/risc0/risc0.proof"),
+        &serialized,
+    )
+    .expect("Failed to create Risc0 proof file");
+    std::fs::write(
+        &current_dir.join("proof_data/risc0/risc0.imageid"),
+        &convert(&METHOD_ID),
+    )
+    .expect("Failed to create Risc0 Image ID file");
+    std::fs::write(
+        &current_dir.join("proof_data/risc0/risc0.pub"),
+        &receipt.journal,
+    )
+    .expect("Failed to create Risc0 public input file");
 
-    //TODO(pat): remove expects
-    std::fs::create_dir_all(current_dir.join("proof_data/risc0")).expect("Failed to create proof_data/sp1");
-    std::fs::write(&current_dir.join("proof_data/risc0/risc0.proof"), &serialized).expect("Failed to create Risc0 proof file");
-    std::fs::write(&current_dir.join("proof_data/risc0/risc0.imageid"), &convert(&METHOD_ID)).expect("Failed to create Risc0 Image ID file");
-    std::fs::write(&current_dir.join("proof_data/risc0/risc0.pub"), &receipt.journal.bytes).expect("Failed to create Risc0 public input file");
+    // Save metrics
+    metrics::write_metrics(&metrics, &current_dir.join("proof_data/risc0"))
+        .expect("Failed to save metrics");
 }
 
 pub fn convert(data: &[u32; 8]) -> [u8; 32] {

@@ -3,14 +3,15 @@ use clap::{Parser, Subcommand};
 use env_logger::Env;
 use log::error;
 use log::info;
+use std::fs;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
-use tokio::io;
-use zkRust::{risc0, sp1, submit_proof_to_aligned, utils, ProofArgs, telemetry::TelemetryCollector};
-use std::fs;
 use std::time::Instant;
-use std::sync::{Arc, Mutex};
+use tokio::io;
+use zkRust::{
+    risc0, sp1, submit_proof_to_aligned, telemetry::TelemetryCollector, utils, ProofArgs,
+};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -36,17 +37,20 @@ async fn main() -> io::Result<()> {
     match &cli.command {
         Commands::ProveSp1(args) => {
             info!("Proving with SP1, program in: {}", args.guest_path);
-            
-            let telemetry = TelemetryCollector::new("SP1", args.precompiles, args.enable_telemetry);
+
+            let telemetry = TelemetryCollector::new(
+                "SP1",
+                args.precompiles,
+                args.enable_telemetry,
+                &args.guest_path,
+            );
             let workspace_start = Instant::now();
 
             // Perform sanitation checks on directory
             let proof_data_dir = PathBuf::from(&args.proof_data_directory_path);
             if !proof_data_dir.exists() {
-                std::fs::create_dir_all(proof_data_dir).unwrap_or(info!(
-                    "Saving Proofs to: {:?}",
-                    &args.proof_data_directory_path
-                ));
+                info!("Saving Proofs to: {:?}", &args.proof_data_directory_path);
+                std::fs::create_dir_all(proof_data_dir)?;
             }
             if utils::validate_directory_structure(&args.guest_path) {
                 let Some(home_dir) = dirs::home_dir() else {
@@ -117,7 +121,7 @@ async fn main() -> io::Result<()> {
 
                 let proof_gen_start = Instant::now();
                 let script_dir = home_dir.join(sp1::SP1_SCRIPT_DIR);
-                
+
                 // Build the program first
                 let build_result = sp1::build_sp1_program(&script_dir)?;
                 if !build_result.success() {
@@ -130,14 +134,30 @@ async fn main() -> io::Result<()> {
                 let tx = telemetry.start_resource_monitoring();
 
                 let result = sp1::generate_sp1_proof(&script_dir, &current_dir)?;
-                
+
                 // Stop resource sampling
                 let _ = tx.send(());
-                
+
                 telemetry.record_proof_generation(proof_gen_start.elapsed());
 
                 if result.success() {
                     info!("SP1 proof and ELF generated");
+
+                    // Read and record SP1 metrics
+                    if let Ok(sp1_metrics) = sp1::read_metrics() {
+                        telemetry.record_zk_metrics(
+                            Some(sp1_metrics.cycles),
+                            Some(sp1_metrics.num_segments),
+                            Some(sp1_metrics.core_proof_size),
+                            Some(sp1_metrics.recursive_proof_size),
+                        );
+                        telemetry.record_proof_timings(
+                            sp1_metrics.core_prove_duration,
+                            sp1_metrics.core_verify_duration,
+                            Some(sp1_metrics.compress_prove_duration),
+                            Some(sp1_metrics.compress_verify_duration),
+                        );
+                    }
 
                     utils::replace(
                         &home_dir.join(sp1::SP1_GUEST_CARGO_TOML),
@@ -167,8 +187,14 @@ async fn main() -> io::Result<()> {
                         if args.enable_telemetry {
                             fs::create_dir_all(&args.telemetry_output_path)?;
                             let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
-                            let telemetry_file = format!("{}/sp1_telemetry_{}.json", args.telemetry_output_path, timestamp);
-                            fs::write(&telemetry_file, serde_json::to_string_pretty(&telemetry_data)?)?;
+                            let telemetry_file = format!(
+                                "{}/sp1_telemetry_{}.json",
+                                args.telemetry_output_path, timestamp
+                            );
+                            fs::write(
+                                &telemetry_file,
+                                serde_json::to_string_pretty(&telemetry_data)?,
+                            )?;
                             info!("Telemetry data saved to: {}", telemetry_file);
                         }
                     }
@@ -177,18 +203,25 @@ async fn main() -> io::Result<()> {
                         home_dir.join(sp1::SP1_BASE_HOST_FILE),
                         home_dir.join(sp1::SP1_HOST_MAIN),
                     )
-                    .map_err(|e| {
+                    .inspect_err(|_e| {
                         error!("Failed to clear SP1 host file");
-                        e
                     })?;
                     return Ok(());
                 }
-                error!("SP1 proof generation failed with exit code: {}", result.code().unwrap_or(-1));
+                error!(
+                    "SP1 proof generation failed with exit code: {}",
+                    result.code().unwrap_or(-1)
+                );
                 if let Some(code) = result.code() {
                     match code {
-                        101 => error!("Proof verification failed - the generated proof could not be verified"),
+                        101 => error!(
+                            "Proof verification failed - the generated proof could not be verified"
+                        ),
                         102 => error!("ELF file generation failed"),
-                        _ => error!("Unknown error occurred during proof generation, code: {}", code),
+                        _ => error!(
+                            "Unknown error occurred during proof generation, code: {}",
+                            code
+                        ),
                     }
                 }
 
@@ -197,8 +230,14 @@ async fn main() -> io::Result<()> {
                     if args.enable_telemetry {
                         fs::create_dir_all(&args.telemetry_output_path)?;
                         let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
-                        let telemetry_file = format!("{}/sp1_telemetry_failed_{}.json", args.telemetry_output_path, timestamp);
-                        fs::write(&telemetry_file, serde_json::to_string_pretty(&telemetry_data)?)?;
+                        let telemetry_file = format!(
+                            "{}/sp1_telemetry_failed_{}.json",
+                            args.telemetry_output_path, timestamp
+                        );
+                        fs::write(
+                            &telemetry_file,
+                            serde_json::to_string_pretty(&telemetry_data)?,
+                        )?;
                         info!("Telemetry data saved to: {}", telemetry_file);
                     }
                 }
@@ -218,17 +257,23 @@ async fn main() -> io::Result<()> {
         Commands::ProveRisc0(args) => {
             info!("Proving with Risc0, program in: {}", args.guest_path);
 
-            let telemetry = TelemetryCollector::new("RISC0", args.precompiles, args.enable_telemetry);
+            let telemetry = TelemetryCollector::new(
+                "RISC0",
+                args.precompiles,
+                args.enable_telemetry,
+                &args.guest_path,
+            );
             let workspace_start = Instant::now();
 
             // Perform sanitation checks on directory
             if utils::validate_directory_structure(&args.guest_path) {
                 let proof_data_dir = PathBuf::from(&args.proof_data_directory_path);
                 if !proof_data_dir.exists() {
-                    std::fs::create_dir_all(proof_data_dir).unwrap_or(info!(
+                    info!(
                         "Saving generated proofs to: {:?}",
                         &args.proof_data_directory_path
-                    ));
+                    );
+                    std::fs::create_dir_all(proof_data_dir)?;
                 }
                 let Some(home_dir) = dirs::home_dir() else {
                     error!("Failed to locate home directory");
@@ -320,6 +365,22 @@ async fn main() -> io::Result<()> {
                 if result.success() {
                     info!("Risc0 proof and Image ID generated");
 
+                    // Read and record RISC0 metrics
+                    if let Ok(risc0_metrics) = risc0::read_metrics() {
+                        telemetry.record_zk_metrics(
+                            Some(risc0_metrics.cycles),
+                            Some(risc0_metrics.num_segments),
+                            Some(risc0_metrics.core_proof_size),
+                            Some(risc0_metrics.recursive_proof_size),
+                        );
+                        telemetry.record_proof_timings(
+                            risc0_metrics.core_prove_duration,
+                            risc0_metrics.core_verify_duration,
+                            Some(risc0_metrics.compress_prove_duration),
+                            Some(risc0_metrics.compress_verify_duration),
+                        );
+                    }
+
                     utils::replace(
                         &home_dir.join(risc0::RISC0_GUEST_CARGO_TOML),
                         risc0::RISC0_ACCELERATION_IMPORT,
@@ -349,8 +410,14 @@ async fn main() -> io::Result<()> {
                         if args.enable_telemetry {
                             fs::create_dir_all(&args.telemetry_output_path)?;
                             let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
-                            let telemetry_file = format!("{}/risc0_telemetry_{}.json", args.telemetry_output_path, timestamp);
-                            fs::write(&telemetry_file, serde_json::to_string_pretty(&telemetry_data)?)?;
+                            let telemetry_file = format!(
+                                "{}/risc0_telemetry_{}.json",
+                                args.telemetry_output_path, timestamp
+                            );
+                            fs::write(
+                                &telemetry_file,
+                                serde_json::to_string_pretty(&telemetry_data)?,
+                            )?;
                             info!("Telemetry data saved to: {}", telemetry_file);
                         }
                     }
@@ -360,9 +427,8 @@ async fn main() -> io::Result<()> {
                         home_dir.join(risc0::RISC0_BASE_HOST_FILE),
                         home_dir.join(risc0::RISC0_HOST_MAIN),
                     )
-                    .map_err(|e| {
+                    .inspect_err(|_e| {
                         error!("Failed to clear Risc0 host file");
-                        e
                     })?;
                     return Ok(());
                 }
@@ -373,8 +439,14 @@ async fn main() -> io::Result<()> {
                     if args.enable_telemetry {
                         fs::create_dir_all(&args.telemetry_output_path)?;
                         let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
-                        let telemetry_file = format!("{}/risc0_telemetry_failed_{}.json", args.telemetry_output_path, timestamp);
-                        fs::write(&telemetry_file, serde_json::to_string_pretty(&telemetry_data)?)?;
+                        let telemetry_file = format!(
+                            "{}/risc0_telemetry_failed_{}.json",
+                            args.telemetry_output_path, timestamp
+                        );
+                        fs::write(
+                            &telemetry_file,
+                            serde_json::to_string_pretty(&telemetry_data)?,
+                        )?;
                         info!("Telemetry data saved to: {}", telemetry_file);
                     }
                 }

@@ -61,7 +61,7 @@ prove_risc0_zkquiz:
 
 # SP1
 prove_sp1_fibonacci:
-	@RUST_LOG=info cargo run --release -- prove-sp1 examples/fibonacci
+	@RUST_LOG=info cargo run --release -- prove-sp1 examples/fibonacci --enable-telemetry
 
 prove_sp1_rsa:
 	@RUST_LOG=info cargo run --release -- prove-sp1 examples/rsa

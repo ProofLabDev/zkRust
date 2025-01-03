@@ -3,9 +3,23 @@ use std::{
     io::{self, Write},
     path::PathBuf,
     process::{Command, ExitStatus},
+    time::Duration,
 };
+use serde::Deserialize;
 
 use crate::utils;
+
+#[derive(Deserialize)]
+pub struct SP1Metrics {
+    pub cycles: u64,
+    pub num_segments: usize,
+    pub core_proof_size: usize,
+    pub recursive_proof_size: usize,
+    pub core_prove_duration: Duration,
+    pub core_verify_duration: Duration,
+    pub compress_prove_duration: Duration,
+    pub compress_verify_duration: Duration,
+}
 
 /// SP1 workspace directories
 pub const SP1_SCRIPT_DIR: &str = "workspaces/sp1/script";
@@ -22,6 +36,7 @@ pub const SP1_GUEST_CARGO_TOML: &str = "workspaces/sp1/program/Cargo.toml";
 pub const SP1_ELF_PATH: &str = "./proof_data/sp1/sp1.elf";
 pub const SP1_PROOF_PATH: &str = "./proof_data/sp1/sp1.proof";
 pub const SP1_PUB_INPUT_PATH: &str = "./proof_data/sp1/sp1.pub";
+pub const SP1_METRICS_PATH: &str = "./proof_data/sp1/sp1_metrics.json";
 
 /// SP1 header added to programs for generating proofs of their execution
 pub const SP1_GUEST_PROGRAM_HEADER: &str = "#![no_main]\nsp1_zkvm::entrypoint!(main);\n";
@@ -84,4 +99,9 @@ pub fn generate_sp1_proof(script_dir: &PathBuf, current_dir: &PathBuf) -> io::Re
         .arg(current_dir)
         .current_dir(script_dir)
         .status()
+}
+
+pub fn read_metrics() -> io::Result<SP1Metrics> {
+    let metrics_str = fs::read_to_string(SP1_METRICS_PATH)?;
+    serde_json::from_str(&metrics_str).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }

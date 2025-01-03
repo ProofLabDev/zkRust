@@ -12,6 +12,7 @@ anyhow = "1.0.86"
 hex = "0.4.3"
 tokio = "1.38.0"
 zk_rust_io = { path = "./zk_rust_io" }
+toml = "0.8.12"
 
 # Sp1
 sp1-sdk = { git = "https://github.com/succinctlabs/sp1.git", tag = "v3.4.0" }

@@ -152,18 +152,16 @@ fn handle_stack(ch: char, stack: &mut Vec<&str>) -> bool {
                 handle_char(ch, stack);
             }
         },
-        Some(&"//comment") => match ch {
-            '\n' => {
+        Some(&"//comment") => {
+            if ch == '\n' {
                 stack.pop();
             }
-            _ => {}
-        },
-        Some(&"/*comment*\\") => match ch {
-            '*' => {
+        }
+        Some(&"/*comment*\\") => {
+            if ch == '*' {
                 stack.push("*");
             }
-            _ => {}
-        },
+        }
         Some(&"*") => {
             match ch {
                 '/' => {
@@ -175,18 +173,16 @@ fn handle_stack(ch: char, stack: &mut Vec<&str>) -> bool {
                 }
             }
         }
-        Some(&"\"string\"") => match ch {
-            '\"' => {
+        Some(&"\"string\"") => {
+            if ch == '\"' {
                 stack.pop();
             }
-            _ => {}
-        },
-        Some(&"\'c\'") => match ch {
-            '\'' => {
+        }
+        Some(&"\'c\'") => {
+            if ch == '\'' {
                 stack.pop();
             }
-            _ => {}
-        },
+        }
         _ => {}
     }
     false

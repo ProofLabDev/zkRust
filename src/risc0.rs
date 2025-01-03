@@ -3,9 +3,23 @@ use std::{
     io::{self, Write},
     path::PathBuf,
     process::{Command, ExitStatus},
+    time::Duration,
 };
+use serde::Deserialize;
 
 use crate::utils;
+
+#[derive(Deserialize)]
+pub struct Risc0Metrics {
+    pub cycles: u64,
+    pub num_segments: usize,
+    pub core_proof_size: usize,
+    pub recursive_proof_size: usize,
+    pub core_prove_duration: Duration,
+    pub core_verify_duration: Duration,
+    pub compress_prove_duration: Duration,
+    pub compress_verify_duration: Duration,
+}
 
 /// RISC0 workspace directories
 pub const RISC0_WORKSPACE_DIR: &str = "workspaces/risc0/";
@@ -22,6 +36,7 @@ pub const RISC0_GUEST_CARGO_TOML: &str = "workspaces/risc0/methods/guest/Cargo.t
 pub const PROOF_FILE_PATH: &str = "./proof_data/risc0/risc0.proof";
 pub const IMAGE_ID_FILE_PATH: &str = "./proof_data/risc0/risc0.imageid";
 pub const PUBLIC_INPUT_FILE_PATH: &str = "./proof_data/risc0/risc0.pub";
+pub const METRICS_FILE_PATH: &str = "./proof_data/risc0/risc0_metrics.json";
 
 //TODO: should we use std or no_std header
 /// RISC0 header added to programs for generating proofs of their execution
@@ -105,4 +120,9 @@ pub fn generate_risc0_proof(workspace_dir: &PathBuf, current_dir: &PathBuf) -> i
         .arg(current_dir)
         .current_dir(workspace_dir)
         .status()
+}
+
+pub fn read_metrics() -> io::Result<Risc0Metrics> {
+    let metrics_str = fs::read_to_string(METRICS_FILE_PATH)?;
+    serde_json::from_str(&metrics_str).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
