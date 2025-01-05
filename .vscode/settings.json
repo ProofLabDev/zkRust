@@ -24,6 +24,14 @@
         "workspaces/sp1/script/Cargo.toml",
         "workspaces/sp1/program/Cargo.toml",
         "workspaces/risc0/host/Cargo.toml",
+        "examples/fibonacci/Cargo.toml",
+        "examples/sha/Cargo.toml",
+        "examples/regex/Cargo.toml",
+        "examples/rsa/Cargo.toml",
+        "examples/ecdsa/Cargo.toml",
+        "examples/json/Cargo.toml",
+        "examples/tendermint/Cargo.toml",
+        "examples/zkquiz/Cargo.toml"
     ],
     "rust-analyzer.showUnlinkedFileNotification": false
 }

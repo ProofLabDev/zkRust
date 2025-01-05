@@ -212,22 +212,84 @@ fn handle_char(ch: char, stack: &mut Vec<&str>) -> bool {
 }
 
 fn copy_dependencies(toml_path: &Path, guest_toml_path: &Path) -> io::Result<()> {
-    let mut toml = std::fs::File::open(toml_path)?;
-    let mut content = String::new();
-    toml.read_to_string(&mut content)?;
+    // Read source toml
+    let mut source_toml = std::fs::File::open(toml_path)?;
+    let mut source_content = String::new();
+    source_toml.read_to_string(&mut source_content)?;
 
-    match content.find("[dependencies]") {
+    // Read destination toml
+    let mut dest_toml = std::fs::File::open(guest_toml_path)?;
+    let mut dest_content = String::new();
+    dest_toml.read_to_string(&mut dest_content)?;
+
+    match source_content.find("[dependencies]") {
         Some(start_index) => {
-            // Get all text after the search string
-            let dependencies = &content[start_index + "[dependencies]".len()..];
-            // Open the output file in append mode
-            let mut guest_toml = OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(guest_toml_path)?;
+            // Get dependencies section from source
+            let source_deps = &source_content[start_index + "[dependencies]".len()..];
 
-            // Write the text after the search string to the output file
-            guest_toml.write_all(dependencies.as_bytes())
+            // Find the end of dependencies section (next section or end of file)
+            let end_index = source_deps.find("\n[").unwrap_or(source_deps.len());
+            let source_deps = &source_deps[..end_index];
+
+            // Parse dependencies into individual entries
+            let source_deps: Vec<&str> = source_deps
+                .lines()
+                .map(|s| s.trim())
+                .filter(|line| !line.is_empty() && !line.starts_with('['))
+                .collect();
+
+            // Get existing dependencies from destination
+            let existing_deps = if let Some(dest_start) = dest_content.find("[dependencies]") {
+                let dest_deps = &dest_content[dest_start + "[dependencies]".len()..];
+                let dest_end = dest_deps.find("\n[").unwrap_or(dest_deps.len());
+                let dest_deps = &dest_deps[..dest_end];
+
+                dest_deps
+                    .lines()
+                    .map(|s| s.trim())
+                    .filter(|line| !line.is_empty() && !line.starts_with('['))
+                    .collect::<Vec<&str>>()
+            } else {
+                Vec::new()
+            };
+
+            // Filter out duplicates and prepare new dependencies
+            let new_deps: String = source_deps
+                .into_iter()
+                .filter(|dep| {
+                    let dep_name = dep.split('=').next().unwrap_or("").trim();
+                    !existing_deps
+                        .iter()
+                        .any(|existing| existing.split('=').next().unwrap_or("").trim() == dep_name)
+                })
+                .fold(String::new(), |mut acc, dep| {
+                    if !acc.is_empty() {
+                        acc.push('\n');
+                    }
+                    acc.push_str(dep);
+                    acc
+                });
+
+            if !new_deps.is_empty() {
+                // If destination doesn't have [dependencies] section, add it
+                if !dest_content.contains("[dependencies]") {
+                    let mut dest_file = OpenOptions::new().append(true).open(guest_toml_path)?;
+                    writeln!(dest_file, "\n[dependencies]")?;
+                }
+
+                // Append new dependencies with proper newlines
+                let mut dest_file = OpenOptions::new().append(true).open(guest_toml_path)?;
+
+                // Add a newline before new dependencies if the file doesn't end with one
+                if !dest_content.ends_with('\n') {
+                    writeln!(dest_file)?;
+                }
+
+                writeln!(dest_file, "{}", new_deps)?;
+                Ok(())
+            } else {
+                Ok(())
+            }
         }
         None => Err(io::Error::other(
             "Failed to find `[dependencies]` in project Cargo.toml",
@@ -432,8 +494,12 @@ pub fn prepare_guest(
     let mut guest_program = program_header.to_string();
     guest_program.push_str(imports);
     guest_program.push_str("pub fn main() {\n");
+    guest_program
+        .push_str("    println!(\"cycle-tracker-report-start: {}\", env!(\"CARGO_PKG_NAME\"));\n");
     guest_program.push_str(main_func_code);
-    guest_program.push_str("\n}");
+    guest_program
+        .push_str("\n    println!(\"cycle-tracker-report-end: {}\", env!(\"CARGO_PKG_NAME\"));\n");
+    guest_program.push_str("}\n");
 
     // Replace zkRust::read()
     let guest_program = guest_program.replace(IO_READ, io_read_header);

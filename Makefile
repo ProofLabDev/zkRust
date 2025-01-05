@@ -64,7 +64,7 @@ prove_sp1_fibonacci:
 	@RUST_LOG=info cargo run --release -- prove-sp1 examples/fibonacci --enable-telemetry
 
 prove_sp1_rsa:
-	@RUST_LOG=info cargo run --release -- prove-sp1 examples/rsa
+	@RUST_LOG=info cargo run --release -- prove-sp1 examples/rsa --enable-telemetry --precompiles
 
 prove_sp1_ecdsa:
 	@RUST_LOG=info cargo run --release -- prove-sp1 examples/ecdsa
@@ -73,10 +73,10 @@ prove_sp1_json:
 	@RUST_LOG=info cargo run --release -- prove-sp1 examples/json
 
 prove_sp1_regex:
-	@RUST_LOG=info cargo run --release -- prove-sp1 examples/regex
+	@RUST_LOG=info cargo run --release -- prove-sp1 examples/regex --enable-telemetry --precompiles
 
 prove_sp1_sha:
-	@RUST_LOG=info cargo run --release -- prove-sp1 examples/sha
+	@RUST_LOG=info cargo run --release -- prove-sp1 examples/sha --enable-telemetry 
 
 prove_sp1_tendermint:
 	@RUST_LOG=info cargo run --release -- prove-sp1 examples/tendermint
@@ -90,6 +90,7 @@ docker-shell:
 		-v zkrust-cargo-registry:/root/.cargo/registry \
 		-v zkrust-cargo-git:/root/.cargo/git \
 		-v "$(PWD)/src:/zkrust/src" \
+		-v "$(PWD)/telemetry:/zkrust/telemetry" \
 		-w /zkrust \
 		zkrust bash
 

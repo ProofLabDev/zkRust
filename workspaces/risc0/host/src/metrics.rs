@@ -34,4 +34,4 @@ impl MetricsCollector {
 pub fn write_metrics(metrics: &Risc0Metrics, output_path: &std::path::Path) -> std::io::Result<()> {
     let json = serde_json::to_string_pretty(metrics)?;
     std::fs::write(output_path.join("risc0_metrics.json"), json)
-} 
+}

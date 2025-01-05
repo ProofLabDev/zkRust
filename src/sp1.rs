@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::{
     fs,
     io::{self, Write},
@@ -5,11 +6,10 @@ use std::{
     process::{Command, ExitStatus},
     time::Duration,
 };
-use serde::Deserialize;
 
 use crate::utils;
 
-#[derive(Deserialize)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct SP1Metrics {
     pub cycles: u64,
     pub num_segments: usize,
