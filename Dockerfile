@@ -1,8 +1,6 @@
 # Use Ubuntu as base image
 FROM ubuntu:22.04
 
-ARG GITHUB_TOKEN=
-ENV GITHUB_TOKEN=${GITHUB_TOKEN}
 # Prevent timezone prompt during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
