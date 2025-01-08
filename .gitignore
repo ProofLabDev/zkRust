@@ -8,6 +8,8 @@ workspaces/*
 !workspaces/risc0/
 !workspaces/sp1/
 
+telemetry/*.json
+
 proof_data/sp1/*
 !proof_data/sp1/.gitkeep
 proof_data/risc0/*

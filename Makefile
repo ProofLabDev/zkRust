@@ -36,7 +36,7 @@ __EXAMPLES__:
 
 # RISC0
 prove_risc0_fibonacci:
-	@RUST_LOG=info cargo run --release -- prove-risc0 examples/fibonacci --enable-telemetry
+	@RUST_LOG=info cargo run --release -- prove-risc0 examples/fibonacci
 
 prove_risc0_rsa:
 	@RUST_LOG=info cargo run --release -- prove-risc0 examples/rsa
@@ -60,26 +60,26 @@ prove_risc0_zkquiz:
 	@RUST_LOG=info cargo run --release -- prove-risc0 examples/zkquiz
 
 prove_risc0_bubble_sort:
-	@RUST_LOG=info cargo run --release -- prove-risc0 examples/bubble_sort --enable-telemetry
+	@RUST_LOG=info cargo run --release -- prove-risc0 examples/bubble_sort
 
 # SP1
 prove_sp1_fibonacci:
-	@RUST_LOG=info cargo run --release -- prove-sp1 examples/fibonacci --enable-telemetry
+	@RUST_LOG=info cargo run --release -- prove-sp1 examples/fibonacci
 
 prove_sp1_rsa:
-	@RUST_LOG=info cargo run --release -- prove-sp1 examples/rsa --enable-telemetry --precompiles
+	@RUST_LOG=info cargo run --release -- prove-sp1 examples/rsa
 
 prove_sp1_ecdsa:
-	@RUST_LOG=info cargo run --release -- prove-sp1 examples/ecdsa --enable-telemetry --precompiles
+	@RUST_LOG=info cargo run --release -- prove-sp1 examples/ecdsa
 	
 prove_sp1_json:
 	@RUST_LOG=info cargo run --release -- prove-sp1 examples/json
 
 prove_sp1_regex:
-	@RUST_LOG=info cargo run --release -- prove-sp1 examples/regex --enable-telemetry --precompiles
+	@RUST_LOG=info cargo run --release -- prove-sp1 examples/regex
 
 prove_sp1_sha:
-	@RUST_LOG=info cargo run --release -- prove-sp1 examples/sha --enable-telemetry 
+	@RUST_LOG=info cargo run --release -- prove-sp1 examples/sha
 
 prove_sp1_tendermint:
 	@RUST_LOG=info cargo run --release -- prove-sp1 examples/tendermint
@@ -88,10 +88,69 @@ prove_sp1_zkquiz:
 	@RUST_LOG=info cargo run --release -- prove-sp1 examples/zkquiz
 
 prove_sp1_iseven:
-	@RUST_LOG=info cargo run --release -- prove-sp1 examples/is_even --enable-telemetry --precompiles
+	@RUST_LOG=info cargo run --release -- prove-sp1 examples/is_even
 
 prove_sp1_bubble_sort:
-	@RUST_LOG=info cargo run --release -- prove-sp1 examples/bubble_sort --enable-telemetry --precompiles
+	@RUST_LOG=info cargo run --release -- prove-sp1 examples/bubble_sort
+
+# Benchmark Commands
+benchmark_sp1_fibonacci:
+	@RUST_LOG=info cargo run --release -- benchmark-sp1 examples/fibonacci --enable-telemetry
+
+benchmark_sp1_rsa:
+	@RUST_LOG=info cargo run --release -- benchmark-sp1 examples/rsa --enable-telemetry
+
+benchmark_sp1_ecdsa:
+	@RUST_LOG=info cargo run --release -- benchmark-sp1 examples/ecdsa --enable-telemetry
+
+benchmark_sp1_json:
+	@RUST_LOG=info cargo run --release -- benchmark-sp1 examples/json --enable-telemetry
+
+benchmark_sp1_regex:
+	@RUST_LOG=info cargo run --release -- benchmark-sp1 examples/regex --enable-telemetry
+
+benchmark_sp1_sha:
+	@RUST_LOG=info cargo run --release -- benchmark-sp1 examples/sha --enable-telemetry
+
+benchmark_sp1_tendermint:
+	@RUST_LOG=info cargo run --release -- benchmark-sp1 examples/tendermint --enable-telemetry
+
+benchmark_sp1_zkquiz:
+	@RUST_LOG=info cargo run --release -- benchmark-sp1 examples/zkquiz --enable-telemetry
+
+benchmark_sp1_iseven:
+	@RUST_LOG=info cargo run --release -- benchmark-sp1 examples/is_even --enable-telemetry
+
+benchmark_sp1_bubble_sort:
+	@RUST_LOG=info cargo run --release -- benchmark-sp1 examples/bubble_sort --enable-telemetry
+
+
+benchmark_risc0_fibonacci:
+	@RUST_LOG=info cargo run --release -- benchmark-risc0 examples/fibonacci --enable-telemetry
+
+benchmark_risc0_rsa:
+	@RUST_LOG=info cargo run --release -- benchmark-risc0 examples/rsa --enable-telemetry
+
+benchmark_risc0_ecdsa:
+	@RUST_LOG=info cargo run --release -- benchmark-risc0 examples/ecdsa --enable-telemetry
+
+benchmark_risc0_json:
+	@RUST_LOG=info cargo run --release -- benchmark-risc0 examples/json --enable-telemetry
+
+benchmark_risc0_regex:
+	@RUST_LOG=info cargo run --release -- benchmark-risc0 examples/regex --enable-telemetry
+
+benchmark_risc0_sha:
+	@RUST_LOG=info cargo run --release -- benchmark-risc0 examples/sha --enable-telemetry
+
+benchmark_risc0_tendermint:
+	@RUST_LOG=info cargo run --release -- benchmark-risc0 examples/tendermint --enable-telemetry
+
+benchmark_risc0_zkquiz:
+	@RUST_LOG=info cargo run --release -- benchmark-risc0 examples/zkquiz --enable-telemetry
+
+benchmark_risc0_bubble_sort:
+	@RUST_LOG=info cargo run --release -- benchmark-risc0 examples/bubble_sort --enable-telemetry
 
 # Docker commands
 docker-shell:
