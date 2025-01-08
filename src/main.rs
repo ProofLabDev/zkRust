@@ -130,6 +130,16 @@ async fn main() -> io::Result<()> {
                 }
                 info!("SP1 program built successfully");
 
+                // Record compiled program size
+                if let Ok(metadata) = fs::metadata(home_dir.join(
+                    "workspaces/sp1/program/target/elf-compilation/riscv32im-succinct-zkvm-elf/release/method",
+                )) {
+                    telemetry.record_program_size(metadata.len());
+                    info!("Recorded SP1 program size: {} bytes", metadata.len());
+                } else {
+                    error!("Failed to read SP1 program size");
+                }
+
                 // Start resource sampling in a separate thread
                 let tx = telemetry.start_resource_monitoring();
 
@@ -187,9 +197,15 @@ async fn main() -> io::Result<()> {
                         if args.enable_telemetry {
                             fs::create_dir_all(&args.telemetry_output_path)?;
                             let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
+                            let package_name = telemetry_data
+                                .program
+                                .cargo_metadata
+                                .package_name
+                                .as_deref()
+                                .unwrap_or("unknown");
                             let telemetry_file = format!(
-                                "{}/sp1_telemetry_{}.json",
-                                args.telemetry_output_path, timestamp
+                                "{}/sp1_telemetry_{}_{}.json",
+                                args.telemetry_output_path, package_name, timestamp
                             );
                             fs::write(
                                 &telemetry_file,
@@ -230,9 +246,15 @@ async fn main() -> io::Result<()> {
                     if args.enable_telemetry {
                         fs::create_dir_all(&args.telemetry_output_path)?;
                         let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
+                        let package_name = telemetry_data
+                            .program
+                            .cargo_metadata
+                            .package_name
+                            .as_deref()
+                            .unwrap_or("unknown");
                         let telemetry_file = format!(
-                            "{}/sp1_telemetry_failed_{}.json",
-                            args.telemetry_output_path, timestamp
+                            "{}/sp1_telemetry_{}_failed_{}.json",
+                            args.telemetry_output_path, package_name, timestamp
                         );
                         fs::write(
                             &telemetry_file,
@@ -352,6 +374,16 @@ async fn main() -> io::Result<()> {
                 }
                 info!("RISC0 program built successfully");
 
+                // Record compiled program size
+                if let Ok(metadata) =
+                    fs::metadata(home_dir.join("workspaces/risc0/target/riscv-guest/release/guest"))
+                {
+                    telemetry.record_program_size(metadata.len());
+                    info!("Recorded RISC0 program size: {} bytes", metadata.len());
+                } else {
+                    error!("Failed to read RISC0 program size");
+                }
+
                 // Start resource sampling in a separate thread
                 let tx = telemetry.start_resource_monitoring();
 
@@ -410,9 +442,15 @@ async fn main() -> io::Result<()> {
                         if args.enable_telemetry {
                             fs::create_dir_all(&args.telemetry_output_path)?;
                             let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
+                            let package_name = telemetry_data
+                                .program
+                                .cargo_metadata
+                                .package_name
+                                .as_deref()
+                                .unwrap_or("unknown");
                             let telemetry_file = format!(
-                                "{}/risc0_telemetry_{}.json",
-                                args.telemetry_output_path, timestamp
+                                "{}/risc0_telemetry_{}_{}.json",
+                                args.telemetry_output_path, package_name, timestamp
                             );
                             fs::write(
                                 &telemetry_file,
@@ -439,9 +477,15 @@ async fn main() -> io::Result<()> {
                     if args.enable_telemetry {
                         fs::create_dir_all(&args.telemetry_output_path)?;
                         let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
+                        let package_name = telemetry_data
+                            .program
+                            .cargo_metadata
+                            .package_name
+                            .as_deref()
+                            .unwrap_or("unknown");
                         let telemetry_file = format!(
-                            "{}/risc0_telemetry_failed_{}.json",
-                            args.telemetry_output_path, timestamp
+                            "{}/risc0_telemetry_{}_failed_{}.json",
+                            args.telemetry_output_path, package_name, timestamp
                         );
                         fs::write(
                             &telemetry_file,

@@ -59,6 +59,9 @@ prove_risc0_tendermint:
 prove_risc0_zkquiz:
 	@RUST_LOG=info cargo run --release -- prove-risc0 examples/zkquiz
 
+prove_risc0_bubble_sort:
+	@RUST_LOG=info cargo run --release -- prove-risc0 examples/bubble_sort --enable-telemetry
+
 # SP1
 prove_sp1_fibonacci:
 	@RUST_LOG=info cargo run --release -- prove-sp1 examples/fibonacci --enable-telemetry
@@ -67,7 +70,7 @@ prove_sp1_rsa:
 	@RUST_LOG=info cargo run --release -- prove-sp1 examples/rsa --enable-telemetry --precompiles
 
 prove_sp1_ecdsa:
-	@RUST_LOG=info cargo run --release -- prove-sp1 examples/ecdsa
+	@RUST_LOG=info cargo run --release -- prove-sp1 examples/ecdsa --enable-telemetry --precompiles
 	
 prove_sp1_json:
 	@RUST_LOG=info cargo run --release -- prove-sp1 examples/json
@@ -84,6 +87,12 @@ prove_sp1_tendermint:
 prove_sp1_zkquiz:
 	@RUST_LOG=info cargo run --release -- prove-sp1 examples/zkquiz
 
+prove_sp1_iseven:
+	@RUST_LOG=info cargo run --release -- prove-sp1 examples/is_even --enable-telemetry --precompiles
+
+prove_sp1_bubble_sort:
+	@RUST_LOG=info cargo run --release -- prove-sp1 examples/bubble_sort --enable-telemetry --precompiles
+
 # Docker commands
 docker-shell:
 	docker run -it \
@@ -91,6 +100,8 @@ docker-shell:
 		-v zkrust-cargo-git:/root/.cargo/git \
 		-v "$(PWD)/src:/zkrust/src" \
 		-v "$(PWD)/telemetry:/zkrust/telemetry" \
+		-v "$(PWD)/Makefile:/zkrust/Makefile" \
+		-v "$(PWD)/examples:/zkrust/examples" \
 		-w /zkrust \
 		zkrust bash
 

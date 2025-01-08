@@ -25,6 +25,7 @@ pub struct ZkMetrics {
     pub core_proof_size: Option<usize>,      // Size of the core proof in bytes
     pub recursive_proof_size: Option<usize>, // Size of the recursive/compressed proof in bytes
     pub execution_speed: Option<f64>,        // Cycles per second during proof generation
+    pub compiled_program_size: Option<u64>,  // Size of the compiled program in bytes
 }
 
 #[derive(Default, Serialize, Clone)]
@@ -59,6 +60,17 @@ pub struct ResourceMetrics {
 }
 
 #[derive(Default, Serialize, Clone)]
+pub struct SystemInfo {
+    pub os_name: String,
+    pub os_version: String,
+    pub kernel_version: String,
+    pub total_memory_kb: u64,
+    pub cpu_brand: String,
+    pub cpu_cores: usize,
+    pub cpu_frequency_mhz: u64,
+}
+
+#[derive(Default, Serialize, Clone)]
 pub struct TelemetryData {
     pub timing: TimingMetrics,
     pub resources: ResourceMetrics,
@@ -66,6 +78,7 @@ pub struct TelemetryData {
     pub precompiles_enabled: bool,
     pub program: ProgramInfo,
     pub zk_metrics: ZkMetrics,
+    pub system_info: SystemInfo,
 }
 
 pub struct TelemetryCollector {
@@ -95,6 +108,27 @@ impl TelemetryCollector {
 
         let cargo_metadata = Self::extract_cargo_metadata(guest_path);
 
+        // Collect system information
+        let system_info = SystemInfo {
+            os_name: system.name().unwrap_or_else(|| "unknown".to_string()),
+            os_version: system.os_version().unwrap_or_else(|| "unknown".to_string()),
+            kernel_version: system
+                .kernel_version()
+                .unwrap_or_else(|| "unknown".to_string()),
+            total_memory_kb: system.total_memory() / BYTES_TO_KB,
+            cpu_brand: system
+                .cpus()
+                .first()
+                .map(|cpu| cpu.brand().to_string())
+                .unwrap_or_else(|| "unknown".to_string()),
+            cpu_cores: system.cpus().len(),
+            cpu_frequency_mhz: system
+                .cpus()
+                .first()
+                .map(|cpu| cpu.frequency())
+                .unwrap_or(0),
+        };
+
         let metrics = TelemetryData {
             proving_system: proving_system.to_string(),
             precompiles_enabled,
@@ -106,6 +140,7 @@ impl TelemetryCollector {
                     .map(|p| p.to_string_lossy().to_string()),
                 cargo_metadata,
             },
+            system_info,
             ..Default::default()
         };
 
@@ -249,6 +284,7 @@ impl TelemetryCollector {
                 .proof_generation_duration
                 .unwrap_or(Duration::from_secs(0));
             let execution_speed = cycles.map(|c| c as f64 / proof_duration.as_secs_f64());
+            let compiled_program_size = metrics.zk_metrics.compiled_program_size;
 
             metrics.zk_metrics = ZkMetrics {
                 cycles,
@@ -256,6 +292,7 @@ impl TelemetryCollector {
                 core_proof_size,
                 recursive_proof_size,
                 execution_speed,
+                compiled_program_size,
             };
         }
     }
@@ -275,6 +312,15 @@ impl TelemetryCollector {
             metrics.timing.core_verify_duration = Some(core_verify);
             metrics.timing.compress_prove_duration = compress_prove;
             metrics.timing.compress_verify_duration = compress_verify;
+        }
+    }
+
+    pub fn record_program_size(&self, size: u64) {
+        if !self.enabled {
+            return;
+        }
+        if let Ok(mut metrics) = self.metrics.lock() {
+            metrics.zk_metrics.compiled_program_size = Some(size);
         }
     }
 
@@ -325,6 +371,27 @@ impl TelemetryCollector {
             info!("Absolute Path: {}", abs_path);
         }
 
+        // Log system information
+        info!("System Information:");
+        info!(
+            "OS: {} {}",
+            final_metrics.system_info.os_name, final_metrics.system_info.os_version
+        );
+        info!(
+            "Kernel Version: {}",
+            final_metrics.system_info.kernel_version
+        );
+        info!(
+            "CPU: {} ({} cores @ {} MHz)",
+            final_metrics.system_info.cpu_brand,
+            final_metrics.system_info.cpu_cores,
+            final_metrics.system_info.cpu_frequency_mhz
+        );
+        info!(
+            "Total Memory: {} KB",
+            final_metrics.system_info.total_memory_kb
+        );
+
         // Log Cargo metadata
         let metadata = &final_metrics.program.cargo_metadata;
         if let Some(name) = &metadata.package_name {
@@ -359,6 +426,9 @@ impl TelemetryCollector {
         }
         if let Some(size) = zk.recursive_proof_size {
             info!("Recursive Proof Size: {} bytes", size);
+        }
+        if let Some(size) = zk.compiled_program_size {
+            info!("Compiled Program Size: {} bytes", size);
         }
 
         // Log timings
