@@ -1,10 +1,10 @@
 use aligned_sdk::core::errors::{AlignedError, SubmitError};
 use ethers::utils::format_units;
 use log::{error, info};
+use serde_json::json;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
-use serde_json::json;
 
 use aligned_sdk::core::types::{
     AlignedVerificationData, Network, PriceEstimate, ProvingSystemId, VerificationData,
@@ -21,8 +21,8 @@ use ethers::signers::LocalWallet;
 
 pub mod risc0;
 pub mod sp1;
-pub mod utils;
 pub mod telemetry;
+pub mod utils;
 
 // Make proof_data path optional
 // Make keystore unneeded
@@ -192,9 +192,7 @@ pub async fn submit_proof_to_aligned(
             })?
         {
             info!("Submitting deposit to Batcher");
-            let Ok(tx_receipt) =
-                deposit_to_aligned(max_fee, signer, network).await
-            else {
+            let Ok(tx_receipt) = deposit_to_aligned(max_fee, signer, network).await else {
                 return Err(SubmitError::GenericError(
                     "Failed to Deposit Funds into the Batcher".to_string(),
                 ))?;
@@ -237,8 +235,7 @@ pub async fn submit_proof_to_aligned(
         pub_input: pub_input.clone(),
     };
 
-    let nonce = get_next_nonce(&args.rpc_url, wallet.address(), network)
-        .await?;
+    let nonce = get_next_nonce(&args.rpc_url, wallet.address(), network).await?;
 
     info!("Submitting proof to Aligned for Verification");
 
@@ -264,7 +261,7 @@ pub async fn submit_proof_to_aligned(
     save_response(
         PathBuf::from(&args.batch_inclusion_data_directory_path),
         &aligned_verification_data,
-        &pub_input
+        &pub_input,
     )?;
     info!(
         "Aligned Verification Data saved {:?}",
@@ -312,7 +309,8 @@ fn save_response(
         .map_err(|e| SubmitError::IoError(batch_inclusion_data_path.clone(), e))?;
     file.write_all(serde_json::to_string_pretty(&data).unwrap().as_bytes())
         .map_err(|e| SubmitError::IoError(batch_inclusion_data_path.clone(), e))?;
-    let current_dir = std::env::current_dir().map_err(|_| SubmitError::GenericError("Failed to get current directory".to_string()))?;
+    let current_dir = std::env::current_dir()
+        .map_err(|_| SubmitError::GenericError("Failed to get current directory".to_string()))?;
 
     info!(
         "Saved batch inclusion data to {:?}",

@@ -7735,6 +7735,7 @@ dependencies = [
  "hex",
  "log",
  "regex",
+ "reqwest 0.11.27",
  "risc0-zkvm",
  "rpassword",
  "serde",

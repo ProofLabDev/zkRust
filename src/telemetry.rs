@@ -1,13 +1,19 @@
-use log::info;
+use log::{debug, info};
 use serde::Serialize;
 use std::fs;
+use std::io::Read;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::time::Duration as StdDuration;
 use std::time::{Duration, Instant};
 use sysinfo::System;
 use toml::Value;
 
 const BYTES_TO_KB: u64 = 1024;
+const EC2_METADATA_TOKEN_URL: &str = "http://169.254.169.254/latest/api/token";
+const EC2_METADATA_INSTANCE_TYPE_URL: &str =
+    "http://169.254.169.254/latest/meta-data/instance-type";
+const DOCKER_CHECK_FILE: &str = "/.dockerenv";
 
 #[derive(Default, Serialize, Clone)]
 pub struct CargoMetadata {
@@ -68,6 +74,8 @@ pub struct SystemInfo {
     pub cpu_brand: String,
     pub cpu_count: usize,
     pub cpu_frequency_mhz: u64,
+    pub is_ec2: bool,
+    pub ec2_instance_type: Option<String>,
 }
 
 #[derive(Default, Serialize, Clone)]
@@ -117,6 +125,9 @@ impl TelemetryCollector {
             0
         };
 
+        // Fetch EC2 metadata
+        let (is_ec2, ec2_instance_type) = Self::fetch_ec2_metadata();
+
         // Collect system information
         let system_info = SystemInfo {
             os_name: System::name().unwrap_or_else(|| "unknown".to_string()),
@@ -130,6 +141,8 @@ impl TelemetryCollector {
                 .unwrap_or_else(|| "unknown".to_string()),
             cpu_count: system.cpus().len(),
             cpu_frequency_mhz: cpu_frequency,
+            is_ec2,
+            ec2_instance_type,
         };
 
         let metrics = TelemetryData {
@@ -194,6 +207,73 @@ impl TelemetryCollector {
             }
         }
         CargoMetadata::default()
+    }
+
+    fn is_running_in_docker() -> bool {
+        std::path::Path::new(DOCKER_CHECK_FILE).exists()
+    }
+
+    fn fetch_ec2_metadata() -> (bool, Option<String>) {
+        let in_docker = Self::is_running_in_docker();
+        debug!("Running in Docker container: {}", in_docker);
+        if in_docker {
+            debug!("Note: EC2 metadata service might not be accessible without host networking");
+        }
+
+        // Try to get IMDSv2 token first
+        let client = reqwest::blocking::Client::new();
+        debug!("Attempting to fetch EC2 metadata token...");
+        let token_result = client
+            .put(EC2_METADATA_TOKEN_URL)
+            .header("X-aws-ec2-metadata-token-ttl-seconds", "21600")
+            .timeout(StdDuration::from_secs(1))
+            .send();
+
+        match token_result {
+            Ok(token_response) => {
+                if !token_response.status().is_success() {
+                    debug!(
+                        "Failed to get EC2 metadata token: HTTP {}",
+                        token_response.status()
+                    );
+                    return (false, None);
+                }
+
+                let token = token_response.text().unwrap_or_default();
+                debug!("Successfully obtained EC2 metadata token");
+
+                // Use token to get instance type
+                debug!("Attempting to fetch instance type...");
+                match client
+                    .get(EC2_METADATA_INSTANCE_TYPE_URL)
+                    .header("X-aws-ec2-metadata-token", token)
+                    .timeout(StdDuration::from_secs(1))
+                    .send()
+                {
+                    Ok(response) => {
+                        if response.status().is_success() {
+                            let instance_type = response.text().unwrap_or_default();
+                            debug!("Successfully retrieved instance type: {}", instance_type);
+                            (true, Some(instance_type))
+                        } else {
+                            debug!("Failed to get instance type: HTTP {}", response.status());
+                            (true, None)
+                        }
+                    }
+                    Err(e) => {
+                        debug!("Error fetching instance type: {}", e);
+                        (true, None)
+                    }
+                }
+            }
+            Err(e) => {
+                debug!("Error fetching EC2 metadata token: {}", e);
+                if in_docker {
+                    debug!("This might be due to running in a Docker container without host networking");
+                }
+                (false, None)
+            }
+        }
     }
 
     pub fn record_workspace_setup(&self, duration: Duration) {
