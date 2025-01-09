@@ -117,9 +117,6 @@ async fn main() -> io::Result<()> {
                     writeln!(toml_file, "{}", sp1::SP1_ACCELERATION_IMPORT)?;
                 }
 
-                telemetry.record_compilation(compilation_start.elapsed());
-
-                let proof_gen_start = Instant::now();
                 let script_dir = home_dir.join(sp1::SP1_SCRIPT_DIR);
 
                 // Build the program first
@@ -129,6 +126,7 @@ async fn main() -> io::Result<()> {
                     return Ok(());
                 }
                 info!("SP1 program built successfully");
+                telemetry.record_compilation(compilation_start.elapsed());
 
                 // Record compiled program size
                 if let Ok(metadata) = fs::metadata(home_dir.join(
@@ -139,6 +137,8 @@ async fn main() -> io::Result<()> {
                 } else {
                     error!("Failed to read SP1 program size");
                 }
+
+                let proof_gen_start = Instant::now();
 
                 // Start resource sampling in a separate thread
                 let tx = telemetry.start_resource_monitoring();
@@ -361,9 +361,6 @@ async fn main() -> io::Result<()> {
                     writeln!(toml_file, "{}", risc0::RISC0_ACCELERATION_IMPORT)?;
                 }
 
-                telemetry.record_compilation(compilation_start.elapsed());
-
-                let proof_gen_start = Instant::now();
                 let workspace_dir = home_dir.join(risc0::RISC0_WORKSPACE_DIR);
 
                 // Build the program first
@@ -373,6 +370,7 @@ async fn main() -> io::Result<()> {
                     return Ok(());
                 }
                 info!("RISC0 program built successfully");
+                telemetry.record_compilation(compilation_start.elapsed());
 
                 // Record compiled program size
                 if let Ok(metadata) = fs::metadata(home_dir.join(
@@ -383,6 +381,8 @@ async fn main() -> io::Result<()> {
                 } else {
                     error!("Failed to read RISC0 program size");
                 }
+
+                let proof_gen_start = Instant::now();
 
                 // Start resource sampling in a separate thread
                 let tx = telemetry.start_resource_monitoring();
