@@ -82,6 +82,7 @@ pub fn input() {
 
 pub fn output() {
     let (light_block_1, light_block_2) = get_light_blocks();
+    let expected_verdict = verify_blocks(light_block_1.clone(), light_block_2.clone());
     // Verify the public values
     let mut expected_public_values: Vec<u8> = Vec::new();
     expected_public_values.extend(light_block_1.signed_header.header.hash().as_bytes());

@@ -22,6 +22,8 @@ fn main() {
             new_account_state.balance += tx.amount;
         }
     }
+
+    zk_rust_io::commit(&new_account_state);
 }
 
 fn input() {
@@ -59,8 +61,6 @@ fn input() {
 
 fn output() {
     let account_state: Account = zk_rust_io::out();
-    println!(
-        "Final account state: {}",
-        serde_json::to_string(&account_state).unwrap()
-    );
+
+    println!("{}", account_state.balance);
 }
