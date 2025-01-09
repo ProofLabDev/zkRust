@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rand_core = "0.6.4"
+rand_core = { version = "0.6.4", features = ["getrandom"] }
 hex-literal = "0.4"
 k256 = { version = "=0.13.3", features = [
     "arithmetic",
