@@ -24,6 +24,21 @@ RUN rustup toolchain install nightly && \
     rustup default nightly && \
     rustup component add rustfmt clippy
 
+# Set shell to bash for all subsequent RUN commands
+SHELL ["/bin/bash", "-c"]
+
+# Install RISC0 toolchain
+RUN bash -c '\
+    curl -L https://risczero.com/install | bash && \
+    export PATH="$PATH:$HOME/.risc0/bin" && \
+    rzup install'
+
+# Install SP1 toolchain
+RUN bash -c '\
+    curl -L https://sp1.succinct.xyz | bash && \
+    export PATH="$PATH:$HOME/.sp1/bin" && \
+    sp1up'
+
 # Create working directory
 WORKDIR /zkrust
 
@@ -38,9 +53,6 @@ COPY rust-toolchain.toml /zkrust/rust-toolchain.toml
 COPY Cargo.toml /zkrust/Cargo.toml
 COPY Cargo.lock /zkrust/Cargo.lock
 
-# Set shell to bash for install script
-SHELL ["/bin/bash", "-c"]
-
 # Install zkRust and its dependencies
 RUN --mount=type=cache,target=/root/.cargo/registry \
     --mount=type=cache,target=/root/.cargo/git \
@@ -52,7 +64,7 @@ RUN --mount=type=cache,target=/root/.cargo/registry \
 # Set environment variables
 ENV ZKRUST_DIR=/root/.zkRust
 ENV ZKRUST_BIN_DIR=/root/.zkRust/bin
-ENV PATH="${PATH}:${ZKRUST_BIN_DIR}"
+ENV PATH="${PATH}:${ZKRUST_BIN_DIR}:/root/.risc0/bin:/root/.sp1/bin"
 
 # Create entrypoint script properly
 RUN printf '#!/bin/bash\nsource ~/.bashrc\nexec "$@"\n' > /entrypoint.sh && \
