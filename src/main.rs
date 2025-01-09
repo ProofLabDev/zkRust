@@ -375,9 +375,9 @@ async fn main() -> io::Result<()> {
                 info!("RISC0 program built successfully");
 
                 // Record compiled program size
-                if let Ok(metadata) =
-                    fs::metadata(home_dir.join("workspaces/risc0/target/riscv-guest/release/guest"))
-                {
+                if let Ok(metadata) = fs::metadata(home_dir.join(
+                    "workspaces/risc0/target/riscv-guest/riscv32im-risc0-zkvm-elf/release/method",
+                )) {
                     telemetry.record_program_size(metadata.len());
                     info!("Recorded RISC0 program size: {} bytes", metadata.len());
                 } else {

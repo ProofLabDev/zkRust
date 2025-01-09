@@ -165,4 +165,4 @@ docker-shell:
 		zkrust bash
 
 docker-build:
-	docker build --platform=linux/amd64 -t zkrust .
+	DOCKER_BUILDKIT=1 docker build --platform=linux/amd64 -t zkrust .
