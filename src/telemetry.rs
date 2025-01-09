@@ -4,7 +4,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use sysinfo::{CpuExt, System, SystemExt};
+use sysinfo::System;
 use toml::Value;
 
 const BYTES_TO_KB: u64 = 1024;
@@ -66,7 +66,7 @@ pub struct SystemInfo {
     pub kernel_version: String,
     pub total_memory_kb: u64,
     pub cpu_brand: String,
-    pub cpu_cores: usize,
+    pub cpu_count: usize,
     pub cpu_frequency_mhz: u64,
 }
 
@@ -98,6 +98,7 @@ impl TelemetryCollector {
     ) -> Self {
         let mut system = System::new();
         system.refresh_all();
+        system.refresh_cpu_frequency();
 
         let path = PathBuf::from(guest_path);
         let file_name = path
@@ -108,25 +109,27 @@ impl TelemetryCollector {
 
         let cargo_metadata = Self::extract_cargo_metadata(guest_path);
 
+        // Calculate average CPU frequency across all CPUs
+        let cpu_frequency = if !system.cpus().is_empty() {
+            let total_freq: u64 = system.cpus().iter().map(|cpu| cpu.frequency()).sum();
+            total_freq / system.cpus().len() as u64
+        } else {
+            0
+        };
+
         // Collect system information
         let system_info = SystemInfo {
-            os_name: system.name().unwrap_or_else(|| "unknown".to_string()),
-            os_version: system.os_version().unwrap_or_else(|| "unknown".to_string()),
-            kernel_version: system
-                .kernel_version()
-                .unwrap_or_else(|| "unknown".to_string()),
+            os_name: System::name().unwrap_or_else(|| "unknown".to_string()),
+            os_version: System::os_version().unwrap_or_else(|| "unknown".to_string()),
+            kernel_version: System::kernel_version().unwrap_or_else(|| "unknown".to_string()),
             total_memory_kb: system.total_memory() / BYTES_TO_KB,
             cpu_brand: system
                 .cpus()
                 .first()
                 .map(|cpu| cpu.brand().to_string())
                 .unwrap_or_else(|| "unknown".to_string()),
-            cpu_cores: system.cpus().len(),
-            cpu_frequency_mhz: system
-                .cpus()
-                .first()
-                .map(|cpu| cpu.frequency())
-                .unwrap_or(0),
+            cpu_count: system.cpus().len(),
+            cpu_frequency_mhz: cpu_frequency,
         };
 
         let metrics = TelemetryData {
@@ -384,7 +387,7 @@ impl TelemetryCollector {
         info!(
             "CPU: {} ({} cores @ {} MHz)",
             final_metrics.system_info.cpu_brand,
-            final_metrics.system_info.cpu_cores,
+            final_metrics.system_info.cpu_count,
             final_metrics.system_info.cpu_frequency_mhz
         );
         info!(
