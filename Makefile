@@ -149,6 +149,9 @@ benchmark_risc0_tendermint:
 benchmark_risc0_zkquiz:
 	@RUST_LOG=info cargo run --release -- prove-risc0 examples/zkquiz --enable-telemetry
 
+benchmark_risc0_iseven:
+	@RUST_LOG=info cargo run --release -- prove-risc0 examples/is_even --enable-telemetry
+
 benchmark_risc0_bubble_sort:
 	@RUST_LOG=info cargo run --release -- prove-risc0 examples/bubble_sort --enable-telemetry
 
