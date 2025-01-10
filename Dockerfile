@@ -20,9 +20,8 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Install nightly toolchain
-RUN rustup toolchain install nightly && \
-    rustup default nightly && \
-    rustup component add rustfmt clippy
+RUN rustup toolchain install nightly-2025-01-01 --component rustfmt clippy rust-src && \
+    rustup default nightly-2025-01-01
 
 # Set shell to bash for all subsequent RUN commands
 SHELL ["/bin/bash", "-c"]
