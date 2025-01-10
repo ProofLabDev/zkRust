@@ -18,10 +18,13 @@ RUN apt-get update && apt-get install -y \
 # Install Rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
+ENV RUSTUP_PERMIT_COPY_RENAME=true
 
 # Install nightly toolchain
-RUN rustup toolchain install nightly-2025-01-09 --component rustfmt clippy rust-src && \
-    rustup default nightly-2025-01-09
+RUN rustup toolchain install nightly && \
+    rustup toolchain install stable && \
+    rustup default nightly && \
+    rustup component add rustfmt clippy
 
 # Set shell to bash for all subsequent RUN commands
 SHELL ["/bin/bash", "-c"]
