@@ -21,7 +21,7 @@ pub struct CargoMetadata {
     pub version: Option<String>,
     pub authors: Option<Vec<String>>,
     pub edition: Option<String>,
-    pub dependencies: Option<Vec<String>>,
+    pub dependencies: Option<Vec<(String, String)>>, // (name, version)
 }
 
 #[derive(Default, Serialize, Clone)]
@@ -51,7 +51,8 @@ pub struct ProgramInfo {
     pub file_path: String,
     pub file_name: String,
     pub absolute_path: Option<String>,
-    pub cargo_metadata: CargoMetadata,
+    pub guest_metadata: CargoMetadata,
+    pub host_metadata: CargoMetadata,
 }
 
 #[derive(Default, Serialize, Clone)]
@@ -115,7 +116,25 @@ impl TelemetryCollector {
             .unwrap_or("unknown")
             .to_string();
 
-        let cargo_metadata = Self::extract_cargo_metadata(guest_path);
+        // Extract guest metadata
+        let guest_metadata = Self::extract_cargo_metadata(guest_path);
+
+        // Extract host metadata from the appropriate host Cargo.toml
+        let host_metadata = if let Some(home_dir) = dirs::home_dir() {
+            let home_dir = home_dir.join(".zkRust");
+            let host_toml_path = if proving_system == "SP1" {
+                home_dir.join("workspaces/sp1/script/Cargo.toml")
+            } else {
+                home_dir.join("workspaces/risc0/host/Cargo.toml")
+            };
+            if host_toml_path.exists() {
+                Self::extract_cargo_metadata(host_toml_path.parent().unwrap().to_str().unwrap())
+            } else {
+                CargoMetadata::default()
+            }
+        } else {
+            CargoMetadata::default()
+        };
 
         // Calculate average CPU frequency across all CPUs
         let cpu_frequency = if !system.cpus().is_empty() {
@@ -154,7 +173,8 @@ impl TelemetryCollector {
                 absolute_path: std::fs::canonicalize(guest_path)
                     .ok()
                     .map(|p| p.to_string_lossy().to_string()),
-                cargo_metadata,
+                guest_metadata,
+                host_metadata,
             },
             system_info,
             ..Default::default()
@@ -199,7 +219,40 @@ impl TelemetryCollector {
 
                 if let Some(deps) = cargo_toml.get("dependencies") {
                     if let Some(table) = deps.as_table() {
-                        metadata.dependencies = Some(table.keys().map(|k| k.to_string()).collect());
+                        metadata.dependencies = Some(
+                            table
+                                .iter()
+                                .map(|(name, value)| {
+                                    let version = match value {
+                                        Value::String(v) => v.clone(),
+                                        Value::Table(t) => {
+                                            if let Some(git) = t.get("git").and_then(|v| v.as_str())
+                                            {
+                                                if let Some(tag) =
+                                                    t.get("tag").and_then(|v| v.as_str())
+                                                {
+                                                    format!("git:{} tag:{}", git, tag)
+                                                } else if let Some(branch) =
+                                                    t.get("branch").and_then(|v| v.as_str())
+                                                {
+                                                    format!("git:{} branch:{}", git, branch)
+                                                } else {
+                                                    format!("git:{}", git)
+                                                }
+                                            } else {
+                                                t.get("version")
+                                                    .and_then(|v| v.as_str())
+                                                    .unwrap_or("*")
+                                                    .to_string()
+                                            }
+                                        }
+                                        Value::Array(_) => "*".to_string(),
+                                        _ => "*".to_string(),
+                                    };
+                                    (name.clone(), version)
+                                })
+                                .collect(),
+                        );
                     }
                 }
 
@@ -475,22 +528,48 @@ impl TelemetryCollector {
             final_metrics.system_info.total_memory_kb
         );
 
-        // Log Cargo metadata
-        let metadata = &final_metrics.program.cargo_metadata;
+        // Log Guest Cargo metadata
+        let metadata = &final_metrics.program.guest_metadata;
+        info!("Guest Program Metadata:");
         if let Some(name) = &metadata.package_name {
-            info!("Package Name: {}", name);
+            info!("  Package Name: {}", name);
             if let Some(version) = &metadata.version {
-                info!("Version: {}", version);
+                info!("  Version: {}", version);
             }
         }
         if let Some(authors) = &metadata.authors {
-            info!("Authors: {}", authors.join(", "));
+            info!("  Authors: {}", authors.join(", "));
         }
         if let Some(edition) = &metadata.edition {
-            info!("Rust Edition: {}", edition);
+            info!("  Rust Edition: {}", edition);
         }
         if let Some(deps) = &metadata.dependencies {
-            info!("Dependencies: {}", deps.join(", "));
+            info!("  Dependencies:");
+            for (name, version) in deps {
+                info!("    {} = {}", name, version);
+            }
+        }
+
+        // Log Host Cargo metadata
+        let metadata = &final_metrics.program.host_metadata;
+        info!("\nHost Program Metadata:");
+        if let Some(name) = &metadata.package_name {
+            info!("  Package Name: {}", name);
+            if let Some(version) = &metadata.version {
+                info!("  Version: {}", version);
+            }
+        }
+        if let Some(authors) = &metadata.authors {
+            info!("  Authors: {}", authors.join(", "));
+        }
+        if let Some(edition) = &metadata.edition {
+            info!("  Rust Edition: {}", edition);
+        }
+        if let Some(deps) = &metadata.dependencies {
+            info!("  Dependencies:");
+            for (name, version) in deps {
+                info!("    {} = {}", name, version);
+            }
         }
 
         // Log ZK metrics

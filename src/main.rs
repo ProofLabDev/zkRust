@@ -199,13 +199,26 @@ async fn main() -> io::Result<()> {
                             let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
                             let package_name = telemetry_data
                                 .program
-                                .cargo_metadata
+                                .guest_metadata
                                 .package_name
                                 .as_deref()
                                 .unwrap_or("unknown");
+                            let instance_type = telemetry_data
+                                .system_info
+                                .ec2_instance_type
+                                .as_deref()
+                                .unwrap_or("local");
                             let telemetry_file = format!(
-                                "{}/sp1_telemetry_{}_{}.json",
-                                args.telemetry_output_path, package_name, timestamp
+                                "{}/sp1_telemetry_{}_{}_{}_{}.json",
+                                args.telemetry_output_path,
+                                package_name,
+                                instance_type,
+                                timestamp,
+                                if result.success() {
+                                    "success"
+                                } else {
+                                    "failed"
+                                }
                             );
                             fs::write(
                                 &telemetry_file,
@@ -248,13 +261,26 @@ async fn main() -> io::Result<()> {
                         let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
                         let package_name = telemetry_data
                             .program
-                            .cargo_metadata
+                            .guest_metadata
                             .package_name
                             .as_deref()
                             .unwrap_or("unknown");
+                        let instance_type = telemetry_data
+                            .system_info
+                            .ec2_instance_type
+                            .as_deref()
+                            .unwrap_or("local");
                         let telemetry_file = format!(
-                            "{}/sp1_telemetry_{}_failed_{}.json",
-                            args.telemetry_output_path, package_name, timestamp
+                            "{}/sp1_telemetry_{}_{}_{}_{}.json",
+                            args.telemetry_output_path,
+                            package_name,
+                            instance_type,
+                            timestamp,
+                            if result.success() {
+                                "success"
+                            } else {
+                                "failed"
+                            }
                         );
                         fs::write(
                             &telemetry_file,
@@ -444,13 +470,26 @@ async fn main() -> io::Result<()> {
                             let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
                             let package_name = telemetry_data
                                 .program
-                                .cargo_metadata
+                                .guest_metadata
                                 .package_name
                                 .as_deref()
                                 .unwrap_or("unknown");
+                            let instance_type = telemetry_data
+                                .system_info
+                                .ec2_instance_type
+                                .as_deref()
+                                .unwrap_or("local");
                             let telemetry_file = format!(
-                                "{}/risc0_telemetry_{}_{}.json",
-                                args.telemetry_output_path, package_name, timestamp
+                                "{}/risc0_telemetry_{}_{}_{}_{}.json",
+                                args.telemetry_output_path,
+                                package_name,
+                                instance_type,
+                                timestamp,
+                                if result.success() {
+                                    "success"
+                                } else {
+                                    "failed"
+                                }
                             );
                             fs::write(
                                 &telemetry_file,
@@ -479,13 +518,26 @@ async fn main() -> io::Result<()> {
                         let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
                         let package_name = telemetry_data
                             .program
-                            .cargo_metadata
+                            .guest_metadata
                             .package_name
                             .as_deref()
                             .unwrap_or("unknown");
+                        let instance_type = telemetry_data
+                            .system_info
+                            .ec2_instance_type
+                            .as_deref()
+                            .unwrap_or("local");
                         let telemetry_file = format!(
-                            "{}/risc0_telemetry_{}_failed_{}.json",
-                            args.telemetry_output_path, package_name, timestamp
+                            "{}/risc0_telemetry_{}_{}_{}_{}.json",
+                            args.telemetry_output_path,
+                            package_name,
+                            instance_type,
+                            timestamp,
+                            if result.success() {
+                                "success"
+                            } else {
+                                "failed"
+                            }
                         );
                         fs::write(
                             &telemetry_file,
