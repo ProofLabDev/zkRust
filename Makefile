@@ -158,6 +158,7 @@ benchmark_risc0_bubble_sort:
 # Docker commands
 docker-shell:
 	docker run -it \
+		--platform=linux/amd64 \
 		-v zkrust-cargo-registry:/root/.cargo/registry \
 		-v zkrust-cargo-git:/root/.cargo/git \
 		-v "$(PWD)/src:/zkrust/src" \
@@ -168,4 +169,4 @@ docker-shell:
 		zkrust bash
 
 docker-build:
-	DOCKER_BUILDKIT=1 docker build --platform=linux/amd64 -t zkrust .
+	DOCKER_BUILDKIT=1 docker build --no-cache --platform=linux/amd64 -t zkrust .

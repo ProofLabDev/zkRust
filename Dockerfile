@@ -27,18 +27,6 @@ RUN rustup toolchain install nightly && \
 # Set shell to bash for all subsequent RUN commands
 SHELL ["/bin/bash", "-c"]
 
-# Install RISC0 toolchain
-RUN bash -c '\
-    curl -L https://risczero.com/install | bash && \
-    export PATH="$PATH:$HOME/.risc0/bin" && \
-    rzup install'
-
-# Install SP1 toolchain
-RUN bash -c '\
-    curl -L https://sp1.succinct.xyz | bash && \
-    export PATH="$PATH:$HOME/.sp1/bin" && \
-    sp1up'
-
 # Create working directory
 WORKDIR /zkrust
 
