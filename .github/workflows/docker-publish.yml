@@ -33,25 +33,51 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata (tags, labels) for Docker
-        id: meta
+        id: meta-cpu
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=sha
+            type=raw,value=main-cpu,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+            type=sha,suffix=-cpu
+            type=ref,event=branch,suffix=-cpu
+            type=ref,event=pr,suffix=-cpu
+            type=semver,pattern={{version}}-cpu
+            type=semver,pattern={{major}}.{{minor}}-cpu
 
-      - name: Build and push Docker image
+      - name: Extract metadata (tags, labels) for Docker GPU
+        id: meta-gpu
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=main-gpu,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+            type=sha,suffix=-gpu
+            type=ref,event=branch,suffix=-gpu
+            type=ref,event=pr,suffix=-gpu
+            type=semver,pattern={{version}}-gpu
+            type=semver,pattern={{major}}.{{minor}}-gpu
+
+      - name: Build and push CPU Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: Dockerfile.cpu
           platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max 
+          tags: ${{ steps.meta-cpu.outputs.tags }}
+          labels: ${{ steps.meta-cpu.outputs.labels }}
+          cache-from: type=gha,scope=cpu
+          cache-to: type=gha,mode=max,scope=cpu
+
+      - name: Build and push GPU Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.gpu
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta-gpu.outputs.tags }}
+          labels: ${{ steps.meta-gpu.outputs.labels }}
+          cache-from: type=gha,scope=gpu
+          cache-to: type=gha,mode=max,scope=gpu 
