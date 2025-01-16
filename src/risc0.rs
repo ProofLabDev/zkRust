@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use std::{
     fs,
     io::{self, Write},
@@ -5,7 +6,6 @@ use std::{
     process::{Command, ExitStatus},
     time::Duration,
 };
-use serde::Deserialize;
 
 use crate::utils;
 
@@ -112,11 +112,19 @@ pub fn build_risc0_program(workspace_dir: &PathBuf) -> io::Result<ExitStatus> {
 }
 
 /// Generates RISC0 proof and image ID using pre-built artifacts
-pub fn generate_risc0_proof(workspace_dir: &PathBuf, current_dir: &PathBuf) -> io::Result<ExitStatus> {
-    Command::new("cargo")
-        .arg("run")
-        .arg("--release")
-        .arg("--")
+pub fn generate_risc0_proof(
+    workspace_dir: &PathBuf,
+    current_dir: &PathBuf,
+    use_gpu: bool,
+) -> io::Result<ExitStatus> {
+    let mut cmd = Command::new("cargo");
+    cmd.arg("run").arg("--release");
+
+    if use_gpu {
+        cmd.arg("--features").arg("cuda");
+    }
+
+    cmd.arg("--")
         .arg(current_dir)
         .current_dir(workspace_dir)
         .status()

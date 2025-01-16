@@ -91,11 +91,19 @@ pub fn build_sp1_program(script_dir: &PathBuf) -> io::Result<ExitStatus> {
 }
 
 /// Generates SP1 proof and ELF using pre-built artifacts
-pub fn generate_sp1_proof(script_dir: &PathBuf, current_dir: &PathBuf) -> io::Result<ExitStatus> {
-    Command::new("cargo")
-        .arg("run")
-        .arg("--release")
-        .arg("--")
+pub fn generate_sp1_proof(
+    script_dir: &PathBuf,
+    current_dir: &PathBuf,
+    use_gpu: bool,
+) -> io::Result<ExitStatus> {
+    let mut cmd = Command::new("cargo");
+    cmd.arg("run").arg("--release");
+
+    if use_gpu {
+        cmd.arg("--features").arg("cuda");
+    }
+
+    cmd.arg("--")
         .arg(current_dir)
         .current_dir(script_dir)
         .status()

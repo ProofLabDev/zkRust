@@ -60,6 +60,12 @@ pub struct ProofArgs {
         long = "precompiles"
     )]
     pub precompiles: bool,
+    #[clap(
+        name = "Enables GPU acceleration for proof generation",
+        long = "gpu",
+        env = "ZKRUST_GPU"
+    )]
+    pub gpu: bool,
     #[arg(
         name = "Aligned verification data directory Path",
         long = "aligned-verification-data-path",

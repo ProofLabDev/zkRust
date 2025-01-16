@@ -143,7 +143,7 @@ async fn main() -> io::Result<()> {
                 // Start resource sampling in a separate thread
                 let tx = telemetry.start_resource_monitoring();
 
-                let result = sp1::generate_sp1_proof(&script_dir, &current_dir)?;
+                let result = sp1::generate_sp1_proof(&script_dir, &current_dir, args.gpu)?;
 
                 // Stop resource sampling
                 let _ = tx.send(());
@@ -413,7 +413,7 @@ async fn main() -> io::Result<()> {
                 // Start resource sampling in a separate thread
                 let tx = telemetry.start_resource_monitoring();
 
-                let result = risc0::generate_risc0_proof(&workspace_dir, &current_dir)?;
+                let result = risc0::generate_risc0_proof(&workspace_dir, &current_dir, args.gpu)?;
 
                 // Stop resource sampling
                 let _ = tx.send(());
