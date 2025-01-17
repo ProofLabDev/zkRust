@@ -1185,7 +1185,6 @@ dependencies = [
  "serde_json",
  "sha2",
  "tracing-subscriber 0.3.19",
- "zk_rust_io",
 ]
 
 [[package]]
@@ -3841,14 +3840,6 @@ dependencies = [
  "memchr",
  "thiserror 2.0.9",
  "zopfli",
-]
-
-[[package]]
-name = "zk_rust_io"
-version = "0.1.0"
-source = "git+https://github.com/yetanotherco/zkRust.git?branch=feat%2Fv2#e450e955938f22d6819db700fd7a2b11f710149c"
-dependencies = [
- "serde",
 ]
 
 [[package]]

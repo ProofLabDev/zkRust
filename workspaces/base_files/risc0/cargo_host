@@ -3,6 +3,10 @@ name = "host"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = []
+cuda = ["risc0-zkvm/cuda"]
+
 [dependencies]
 methods = { path = "../methods" }
 risc0-zkvm = { git = "https://github.com/risc0/risc0", tag = "v1.2.0", features = ["prove"] }

@@ -1,18 +1,8 @@
+use zk_rust_io;
 use sp1_sdk::{ProverClient, SP1Stdin};
 mod metrics;
 use metrics::{MetricsCollector, SP1Metrics};
 use tracing::{error, info};
-
-use sp1_core_executor::SP1Context;
-
-// use sp1_core_machine::io::SP1Stdin;
-use sp1_prover::{components::DefaultProverComponents, utils::get_cycles, SP1Prover};
-
-#[cfg(feature = "cuda")]
-use sp1_cuda::SP1CudaProver;
-
-#[cfg(not(feature = "cuda"))]
-use sp1_stark::SP1ProverOpts;
 
 /// The ELF (executable and linkable format) file for the Succinct RISC-V zkVM.
 ///
@@ -20,10 +10,11 @@ use sp1_stark::SP1ProverOpts;
 pub const METHOD_ELF: &[u8] = include_bytes!("../../program/elf/riscv32im-succinct-zkvm-elf");
 
 fn main() {
+    // Initialize tracing
+    tracing_subscriber::fmt().with_env_filter("info").init();
+
     let args: Vec<String> = std::env::args().collect();
     let current_dir = std::path::PathBuf::from(args[1].clone());
-    // Setup the logger.
-    sp1_sdk::utils::setup_logger();
 
     let mut metrics = SP1Metrics::default();
     let mut core_timer = MetricsCollector::new();
@@ -32,16 +23,11 @@ fn main() {
     // Setup the inputs and set as mutable to allow for template code to access it if needed
     let mut stdin = SP1Stdin::new();
 
-    // INPUT //
-
-    #[cfg(feature = "cuda")]
-    let server = SP1CudaProver::new().expect("Failed to initialize CUDA prover");
+    let n = 1000u32;
+    stdin.write(&n);
 
     let client = ProverClient::new();
-    let prover = SP1Prover::<DefaultProverComponents>::new();
-
-    // Setup the prover
-    let (pk, vk) = prover.setup(METHOD_ELF);
+    let (pk, vk) = client.setup(METHOD_ELF);
 
     // First run executor to get cycle count
     let (_, report) = client.execute(METHOD_ELF, stdin.clone()).run().unwrap();
@@ -50,50 +36,30 @@ fn main() {
     // Number of segments is the number of cycle tracking entries
     metrics.num_segments = report.cycle_tracker.len();
 
-    // Setup the prover options.
-    #[cfg(not(feature = "cuda"))]
-    let opts = SP1ProverOpts::default();
-
+    // Generate uncompressed proof
     core_timer.start_timing();
-
     // Set as mutable to allow for template code to access it if needed
-    // Generate uncompressed proof (CPU)
-    #[cfg(not(feature = "cuda"))]
     let mut proof = client.prove(&pk, stdin.clone()).run().unwrap();
-
-    // Generate the core proof (CUDA).
-    #[cfg(feature = "cuda")]
-    let proof = server.prove_core(&pk, &stdin.clone()).unwrap();
-
     metrics.core_prove_duration = core_timer.elapsed().unwrap();
 
     // Get uncompressed proof size
     let core_bytes = bincode::serialize(&proof).unwrap();
     metrics.core_proof_size = core_bytes.len();
 
-    // Save public values before moving proof
-    let public_values = proof.public_values.clone();
-
     // Verify uncompressed proof
     core_timer.start_timing();
-    prover
-        .verify(&proof.proof, &vk)
+    client
+        .verify(&proof, &vk)
         .expect("Failed to verify uncompressed proof");
     metrics.core_verify_duration = core_timer.elapsed().unwrap();
 
     // Generate compressed proof
     compress_timer.start_timing();
-
-    #[cfg(not(feature = "cuda"))]
     let compressed = client
         .prove(&pk, stdin)
         .compressed() // Enable compression
         .run()
         .unwrap();
-
-    #[cfg(feature = "cuda")]
-    let compressed = server.compress(&vk, proof, vec![]).unwrap();
-
     metrics.compress_prove_duration = compress_timer.elapsed().unwrap();
 
     // Get compressed proof size
@@ -102,12 +68,16 @@ fn main() {
 
     // Verify compressed proof
     compress_timer.start_timing();
-    prover
-        .verify_compressed(&compressed, &vk)
+    client
+        .verify(&compressed, &vk)
         .expect("Failed to verify compressed proof");
     metrics.compress_verify_duration = compress_timer.elapsed().unwrap();
 
-    // OUTPUT //
+    let (n, a, b): (u32, u32, u32) = proof.public_values.read();
+
+    println!("n: {}", n);
+    println!("a: {}", a);
+    println!("b: {}", b);
 
     // Save proof artifacts
     std::fs::create_dir_all(current_dir.join("proof_data/sp1"))
@@ -119,8 +89,11 @@ fn main() {
     .expect("Failed to save SP1 Proof file");
     std::fs::write(current_dir.join("proof_data/sp1/sp1.elf"), METHOD_ELF)
         .expect("Failed to create SP1 elf file");
-    std::fs::write(current_dir.join("proof_data/sp1/sp1.pub"), &public_values)
-        .expect("Failed to save SP1 public input");
+    std::fs::write(
+        current_dir.join("proof_data/sp1/sp1.pub"),
+        &compressed.public_values,
+    )
+    .expect("Failed to save SP1 public input");
 
     // Save metrics
     info!("Attempting to save metrics...");

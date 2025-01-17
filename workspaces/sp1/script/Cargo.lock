@@ -2792,6 +2792,7 @@ dependencies = [
  "sp1-stark",
  "tracing",
  "tracing-subscriber",
+ "zk_rust_io",
 ]
 
 [[package]]
@@ -4679,9 +4680,9 @@ dependencies = [
 
 [[package]]
 name = "sp1-build"
-version = "3.4.0"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e58e5f49cf1481363abb74b55104e215f3b6e58dc2adb748bde7a6e4ea61b51d"
+checksum = "5e2e8eaf2d29f8e7170c1d901e7c0133399c7fe557aedea659f171a86f34a9f9"
 dependencies = [
  "anyhow",
  "cargo_metadata",
@@ -4817,9 +4818,9 @@ dependencies = [
 
 [[package]]
 name = "sp1-helper"
-version = "3.4.0"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "158708d1ac1a62e96e5c4f69df5267a6241573a01dd896530d1f435365ffc275"
+checksum = "bfeb036e069d9c621c99579e90175e71f2a59232b2ecdb3c44a31f5e601e5259"
 dependencies = [
  "sp1-build",
 ]
@@ -6343,6 +6344,14 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.94",
+]
+
+[[package]]
+name = "zk_rust_io"
+version = "0.1.0"
+source = "git+https://github.com/yetanotherco/zkRust.git#206e1740dfe5be4cc6719f48b27918c74ba4ad3f"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
