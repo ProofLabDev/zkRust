@@ -41,6 +41,7 @@ async fn main() -> io::Result<()> {
             let telemetry = TelemetryCollector::new(
                 "SP1",
                 args.precompiles,
+                args.gpu,
                 args.enable_telemetry,
                 &args.guest_path,
             );
@@ -308,6 +309,7 @@ async fn main() -> io::Result<()> {
             let telemetry = TelemetryCollector::new(
                 "RISC0",
                 args.precompiles,
+                args.gpu,
                 args.enable_telemetry,
                 &args.guest_path,
             );
