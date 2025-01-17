@@ -21,6 +21,8 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 ENV RUSTUP_PERMIT_COPY_RENAME=true
 
+COPY rust-toolchain.toml /zkrust/rust-toolchain.toml
+
 # Install nightly toolchain
 RUN rustup toolchain install nightly && \
     rustup toolchain install stable && \
@@ -40,7 +42,6 @@ COPY Makefile /zkrust/Makefile
 COPY src /zkrust/src
 COPY workspaces /zkrust/workspaces
 COPY zk_rust_io /zkrust/zk_rust_io
-COPY rust-toolchain.toml /zkrust/rust-toolchain.toml
 COPY Cargo.toml /zkrust/Cargo.toml
 COPY Cargo.lock /zkrust/Cargo.lock
 
