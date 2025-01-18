@@ -51,7 +51,7 @@ jobs:
           context: .
           file: Dockerfile.cpu
           platforms: linux/amd64
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true
           tags: ${{ steps.meta-cpu.outputs.tags }}
           labels: ${{ steps.meta-cpu.outputs.labels }}
           cache-from: type=gha,scope=cpu
@@ -96,7 +96,7 @@ jobs:
           context: .
           file: Dockerfile.gpu
           platforms: linux/amd64
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true
           tags: ${{ steps.meta-gpu.outputs.tags }}
           labels: ${{ steps.meta-gpu.outputs.labels }}
           cache-from: type=gha,scope=gpu
