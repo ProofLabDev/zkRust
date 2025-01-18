@@ -89,6 +89,10 @@ fn main() {
         .prove(&pk, stdin)
         .compressed() // Enable compression
         .run()
+        .unwrap()
+        .proof
+        .try_as_compressed()
+        .unwrap()
         .unwrap();
 
     #[cfg(feature = "cuda")]
