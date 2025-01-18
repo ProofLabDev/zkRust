@@ -9,7 +9,7 @@ sp1-helper = "4.0.0"
 
 [features]
 default = []
-cuda = ["dep:sp1-cuda"]
+cuda = ["dep:sp1-cuda", "sp1-sdk/cuda"]
 
 [dependencies]
 sp1-sdk = { git = "https://github.com/succinctlabs/sp1.git", tag = "v3.4.0" }
