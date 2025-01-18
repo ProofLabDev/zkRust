@@ -1,4 +1,5 @@
 use log::{debug, info};
+use nvml_wrapper::Nvml;
 use serde::Serialize;
 use std::fs;
 use std::io::Read;
@@ -67,6 +68,13 @@ pub struct ResourceMetrics {
 }
 
 #[derive(Default, Serialize, Clone)]
+pub struct GpuInfo {
+    pub name: String,
+    pub memory_total_kb: Option<u64>,
+    pub vendor: String,
+}
+
+#[derive(Default, Serialize, Clone)]
 pub struct SystemInfo {
     pub os_name: String,
     pub os_version: String,
@@ -75,8 +83,11 @@ pub struct SystemInfo {
     pub cpu_brand: String,
     pub cpu_count: usize,
     pub cpu_frequency_mhz: u64,
+    pub gpu_enabled: bool,
+    pub gpus: Vec<GpuInfo>,
     pub is_ec2: bool,
     pub ec2_instance_type: Option<String>,
+    pub llvm_version: Option<String>,
 }
 
 #[derive(Default, Serialize, Clone)]
@@ -85,6 +96,7 @@ pub struct TelemetryData {
     pub resources: ResourceMetrics,
     pub proving_system: String,
     pub precompiles_enabled: bool,
+    pub gpu_enabled: bool,
     pub program: ProgramInfo,
     pub zk_metrics: ZkMetrics,
     pub system_info: SystemInfo,
@@ -102,6 +114,7 @@ impl TelemetryCollector {
     pub fn new(
         proving_system: &str,
         precompiles_enabled: bool,
+        gpu_enabled: bool,
         enabled: bool,
         guest_path: &str,
     ) -> Self {
@@ -147,6 +160,21 @@ impl TelemetryCollector {
         // Fetch EC2 metadata
         let (is_ec2, ec2_instance_type) = Self::fetch_ec2_metadata();
 
+        // Discover GPUs
+        let gpus = if gpu_enabled {
+            Self::discover_gpus()
+        } else {
+            Vec::new()
+        };
+
+        // Get LLVM version
+        let llvm_version = Self::get_llvm_version();
+        if let Some(version) = &llvm_version {
+            debug!("Detected LLVM version: {}", version);
+        } else {
+            debug!("Could not detect LLVM version");
+        }
+
         // Collect system information
         let system_info = SystemInfo {
             os_name: System::name().unwrap_or_else(|| "unknown".to_string()),
@@ -160,13 +188,17 @@ impl TelemetryCollector {
                 .unwrap_or_else(|| "unknown".to_string()),
             cpu_count: system.cpus().len(),
             cpu_frequency_mhz: cpu_frequency,
+            gpu_enabled,
+            gpus,
             is_ec2,
             ec2_instance_type,
+            llvm_version,
         };
 
         let metrics = TelemetryData {
             proving_system: proving_system.to_string(),
             precompiles_enabled,
+            gpu_enabled,
             program: ProgramInfo {
                 file_path: guest_path.to_string(),
                 file_name,
@@ -327,6 +359,84 @@ impl TelemetryCollector {
                 (false, None)
             }
         }
+    }
+
+    fn discover_gpus() -> Vec<GpuInfo> {
+        let mut gpus = Vec::new();
+
+        // Try to initialize NVIDIA Management Library
+        match Nvml::init() {
+            Ok(nvml) => {
+                // Get all NVIDIA devices
+                match nvml.device_count() {
+                    Ok(device_count) => {
+                        debug!("Found {} NVIDIA GPU(s)", device_count);
+                        for i in 0..device_count {
+                            if let Ok(device) = nvml.device_by_index(i) {
+                                let mut gpu_info = GpuInfo {
+                                    vendor: "NVIDIA".to_string(),
+                                    name: device
+                                        .name()
+                                        .unwrap_or_else(|_| "Unknown NVIDIA GPU".to_string()),
+                                    memory_total_kb: None,
+                                };
+
+                                // Get memory information
+                                if let Ok(memory) = device.memory_info() {
+                                    gpu_info.memory_total_kb = Some(memory.total / 1024);
+                                }
+
+                                gpus.push(gpu_info);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        debug!("Failed to get NVIDIA GPU count: {}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                debug!("Failed to initialize NVIDIA GPU detection: {}", e);
+            }
+        }
+
+        if gpus.is_empty() {
+            debug!("No GPUs detected");
+        }
+
+        gpus
+    }
+
+    fn get_llvm_version() -> Option<String> {
+        // Try to get LLVM version using llvm-config
+        if let Ok(output) = std::process::Command::new("llvm-config")
+            .arg("--version")
+            .output()
+        {
+            if output.status.success() {
+                if let Ok(version) = String::from_utf8(output.stdout) {
+                    return Some(version.trim().to_string());
+                }
+            }
+        }
+
+        // Try to get LLVM version using clang
+        if let Ok(output) = std::process::Command::new("clang")
+            .arg("--version")
+            .output()
+        {
+            if output.status.success() {
+                if let Ok(version) = String::from_utf8(output.stdout) {
+                    if let Some(v) = version.lines().next() {
+                        if let Some(idx) = v.find("version") {
+                            return Some(v[idx..].trim().to_string());
+                        }
+                    }
+                }
+            }
+        }
+
+        None
     }
 
     pub fn record_workspace_setup(&self, duration: Duration) {
@@ -527,6 +637,28 @@ impl TelemetryCollector {
             "Total Memory: {} KB",
             final_metrics.system_info.total_memory_kb
         );
+        if let Some(llvm_version) = &final_metrics.system_info.llvm_version {
+            info!("LLVM Version: {}", llvm_version);
+        } else {
+            info!("LLVM Version: Not detected");
+        }
+        info!(
+            "GPU Acceleration: {}",
+            if final_metrics.system_info.gpu_enabled {
+                "Enabled"
+            } else {
+                "Disabled"
+            }
+        );
+
+        if !final_metrics.system_info.gpus.is_empty() {
+            for (i, gpu) in final_metrics.system_info.gpus.iter().enumerate() {
+                info!("GPU {}: {} ({})", i + 1, gpu.name, gpu.vendor);
+                if let Some(total) = gpu.memory_total_kb {
+                    info!("  Memory Total: {} KB", total);
+                }
+            }
+        }
 
         // Log Guest Cargo metadata
         let metadata = &final_metrics.program.guest_metadata;
