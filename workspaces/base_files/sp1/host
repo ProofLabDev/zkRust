@@ -23,11 +23,11 @@ fn main() {
 
     // INPUT //
 
-    let client = ProverClient::new();
+    let client = ProverClient::from_env();
     let (pk, vk) = client.setup(METHOD_ELF);
 
     // First run executor to get cycle count
-    let (_, report) = client.execute(METHOD_ELF, stdin.clone()).run().unwrap();
+    let (_, report) = client.execute(METHOD_ELF, &stdin.clone()).run().unwrap();
     // Get total cycles from cycle tracker
     metrics.cycles = report.cycle_tracker.iter().map(|(_, cycles)| *cycles).sum();
     // Number of segments is the number of cycle tracking entries
@@ -36,7 +36,7 @@ fn main() {
     // Generate uncompressed proof
     core_timer.start_timing();
     // Set as mutable to allow for template code to access it if needed
-    let mut proof = client.prove(&pk, stdin.clone()).run().unwrap();
+    let mut proof = client.prove(&pk, &stdin.clone()).run().unwrap();
     metrics.core_prove_duration = core_timer.elapsed().unwrap();
 
     // Get uncompressed proof size
@@ -53,7 +53,7 @@ fn main() {
     // Generate compressed proof
     compress_timer.start_timing();
     let compressed = client
-        .prove(&pk, stdin)
+        .prove(&pk, &stdin)
         .compressed() // Enable compression
         .run()
         .unwrap();
