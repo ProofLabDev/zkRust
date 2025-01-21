@@ -383,8 +383,8 @@ dependencies = [
 
 [[package]]
 name = "sp1-lib"
-version = "4.0.0"
-source = "git+https://github.com/succinctlabs/sp1.git?tag=v4.0.0#4a1dcea0749021ce6e2596bce5bb45f2def7a95c"
+version = "4.0.1"
+source = "git+https://github.com/succinctlabs/sp1.git?tag=v4.0.1#dae15e9fe60d51a3a702361c74ca93f97fab2e16"
 dependencies = [
  "bincode",
  "serde",
@@ -393,8 +393,8 @@ dependencies = [
 
 [[package]]
 name = "sp1-primitives"
-version = "4.0.0"
-source = "git+https://github.com/succinctlabs/sp1.git?tag=v4.0.0#4a1dcea0749021ce6e2596bce5bb45f2def7a95c"
+version = "4.0.1"
+source = "git+https://github.com/succinctlabs/sp1.git?tag=v4.0.1#dae15e9fe60d51a3a702361c74ca93f97fab2e16"
 dependencies = [
  "bincode",
  "hex",
@@ -410,8 +410,8 @@ dependencies = [
 
 [[package]]
 name = "sp1-zkvm"
-version = "4.0.0"
-source = "git+https://github.com/succinctlabs/sp1.git?tag=v4.0.0#4a1dcea0749021ce6e2596bce5bb45f2def7a95c"
+version = "4.0.1"
+source = "git+https://github.com/succinctlabs/sp1.git?tag=v4.0.1#dae15e9fe60d51a3a702361c74ca93f97fab2e16"
 dependencies = [
  "cfg-if",
  "getrandom",
