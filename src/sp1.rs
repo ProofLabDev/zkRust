@@ -101,6 +101,7 @@ pub fn generate_sp1_proof(
 
     if use_gpu {
         cmd.arg("--features").arg("cuda");
+        cmd.env("SP1_PROVER", "cuda");
     }
 
     cmd.arg("--")

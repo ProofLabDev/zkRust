@@ -5,5 +5,5 @@ name = "method"
 edition = "2021"
 
 [dependencies]
-sp1-zkvm = { git = "https://github.com/succinctlabs/sp1.git", tag = "v3.4.0" }
+sp1-zkvm = { git = "https://github.com/succinctlabs/sp1.git", tag = "v4.0.0" }
 zk_rust_io = { git = "https://github.com/yetanotherco/zkRust.git" }
