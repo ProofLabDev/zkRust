@@ -5,19 +5,14 @@ name = "method"
 edition = "2021"
 
 [build-dependencies]
-sp1-helper = "3.4.0"
+sp1-helper = "4.0.1"
 
 [features]
 default = []
-cuda = ["dep:sp1-cuda", "sp1-sdk/cuda"]
+cuda = ["sp1-sdk/cuda"]
 
 [dependencies]
-sp1-sdk = { git = "https://github.com/succinctlabs/sp1.git", tag = "v3.4.0" }
-sp1-prover = { git = "https://github.com/succinctlabs/sp1.git", tag = "v3.4.0" }
-sp1-cuda = { git = "https://github.com/succinctlabs/sp1.git", tag = "v3.4.0", optional = true }
-sp1-stark = { git = "https://github.com/succinctlabs/sp1.git", tag = "v3.4.0" }
-sp1-core-executor = { git = "https://github.com/succinctlabs/sp1.git", tag = "v3.4.0" }
-sp1-core-machine = { git = "https://github.com/succinctlabs/sp1.git", tag = "v3.4.0" }
+sp1-sdk = { git = "https://github.com/succinctlabs/sp1.git", tag = "v4.0.1" }
 
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

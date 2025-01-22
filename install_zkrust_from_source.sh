@@ -74,7 +74,7 @@ if ! command -v sp1up &> /dev/null; then
     echo "Installing SP1 toolchain..."
     curl -L https://sp1.succinct.xyz | bash
     export PATH="$PATH:$HOME/.sp1/bin"
-    sp1up -v v3.4.0
+    sp1up -v v4.0.1
 else
     echo "SP1 toolchain already installed"
 fi
