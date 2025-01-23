@@ -29,9 +29,11 @@
         "examples/regex/Cargo.toml",
         "examples/rsa/Cargo.toml",
         "examples/ecdsa/Cargo.toml",
+        "examples/eddsa/Cargo.toml",
         "examples/json/Cargo.toml",
         "examples/tendermint/Cargo.toml",
-        "examples/zkquiz/Cargo.toml"
+        "examples/zkquiz/Cargo.toml",
+        "examples/keccak256/Cargo.toml"
     ],
     "rust-analyzer.showUnlinkedFileNotification": false
 }

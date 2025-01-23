@@ -71,7 +71,13 @@ prove_sp1_rsa:
 
 prove_sp1_ecdsa:
 	cargo run --release -- prove-sp1 examples/ecdsa
-	
+
+prove_sp1_eddsa:
+	cargo run --release -- prove-sp1 examples/eddsa
+
+prove_sp1_keccak256:
+	cargo run --release -- prove-sp1 examples/keccak256
+
 prove_sp1_json:
 	cargo run --release -- prove-sp1 examples/json
 
@@ -102,6 +108,12 @@ benchmark_sp1_rsa:
 
 benchmark_sp1_ecdsa:
 	cargo run --release -- prove-sp1 examples/ecdsa --enable-telemetry
+
+benchmark_sp1_eddsa:
+	cargo run --release -- prove-sp1 examples/eddsa --enable-telemetry
+
+benchmark_sp1_keccak256:
+	cargo run --release -- prove-sp1 examples/keccak256 --enable-telemetry
 
 benchmark_sp1_json:
 	cargo run --release -- prove-sp1 examples/json --enable-telemetry
